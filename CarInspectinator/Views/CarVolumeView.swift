@@ -20,8 +20,7 @@ struct CarVolumeView: View {
             Model3D(named: carVolumeId, bundle: realityKitContentBundle) { model in
                 model
                     .resizable()
-                    .scaledToFit()
-//                    .rotationEffect(.degrees(context.date.timeIntervalSinceReferenceDate * 10), axis: .x)
+                    .scaledToFit3D()
                     .rotation3DEffect(.degrees(context.date.timeIntervalSinceReferenceDate * 10), axis: .y)
             } placeholder: {
                 ProgressView()

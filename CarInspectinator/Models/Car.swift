@@ -93,7 +93,7 @@ var carsArray = [
             "curbWeight": "3,128 lb"
         ]
     ),
-    Car(make: "BMW", model: "M3", icon: "bmw_m3"),
+    Car(make: "BMW", model: "M3", icon: "bmw_m3", volumeID: "BMW_M4_f82"),
     Car(make: "Audi", model: "RS7", icon: "audi_rs7"),
     Car(make: "Mercedes", model: "G63", icon: "mercedes_g63"),
     Car(make: "Toyota", model: "Supra", icon: "toyota_supra")

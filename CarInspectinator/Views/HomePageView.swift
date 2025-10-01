@@ -51,9 +51,9 @@ struct HopePageView: View {
                 path.append(car)
 
                 // Defer the reset to avoid mutating during the same update cycle
-                DispatchQueue.main.async {
-                    appModel.selectedCar = nil
-                }
+//                DispatchQueue.main.async {
+//                    appModel.selectedCar = nil
+//                }
             }
         }
     }

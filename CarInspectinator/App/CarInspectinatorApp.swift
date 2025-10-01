@@ -15,6 +15,7 @@ struct CarInspectinatorApp: App {
     @State private var currentImmersionStyle: ImmersionStyle = .full
     
     public static let volkswagenGti = "vw_golf_5_gti"
+    public static let bmwm4 = "BMW_M4_f82"
     
     var body: some Scene {
         WindowGroup {
@@ -27,11 +28,18 @@ struct CarInspectinatorApp: App {
         }
         
         WindowGroup(id: Self.volkswagenGti) {
-            CarVolumeView()
+            CarVolumeView(carVolumeId: Self.volkswagenGti)
                 .environment(appModel)
         }
         .windowStyle(.volumetric)
-//        .defaultSize(width: 2, height: 1, depth: 2, in: .meters)
+        .defaultSize(width: 1, height: 1, depth: 1, in: .meters)
+        
+        WindowGroup(id: Self.bmwm4) {
+            CarVolumeView(carVolumeId: Self.bmwm4)
+                .environment(appModel)
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 1, height: 1, depth: 1, in: .meters)
         
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()

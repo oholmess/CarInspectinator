@@ -86,12 +86,14 @@ private extension CarDetailedView {
         .accessibilityLabel("\(car.make) \(car.model), \(car.year.map(String.init) ?? "Year unknown")")
     }
     
-    @ViewBuilder
-    var carVolumeView: some View {
-        if is3DModelOpen {
-            CarVolumeView(car: car)
-        }
-    }
+//    @ViewBuilder
+//    var carVolumeView: some View {
+//        if let volumeId = car.volumeID {
+//            CarVolumeView(carVolumeId: volumeId)
+//        } else {
+//            EmptyView()
+//        }
+//    }
 
     var specsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -273,7 +275,13 @@ private extension CarDetailedView {
         if is3DModelOpen {
             is3DModelOpen = false
         } else {
-            openWindow(id: CarInspectinatorApp.volkswagenGti)
+            if let volumeId = appModel.selectedCar?.volumeID {
+                print("volumeId: ", volumeId)
+                openWindow(id: volumeId)
+            } else {
+                print("no volume ID, selected car: ", appModel.selectedCar ?? "n")
+                is3DModelOpen = false
+            }
             // If your API returns a result enum, check it here for success:
             // if case .opened = result { isImmersiveModeOn = true }
             // Fallback: assume success

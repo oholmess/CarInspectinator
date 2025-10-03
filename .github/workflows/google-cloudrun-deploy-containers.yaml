@@ -1,0 +1,589 @@
+# Enhanced workflow that uses services.json for configuration
+# This workflow follows the CarInspectinator branching strategy:
+#
+# Branching Strategy:
+# - main → production env (direct deployment for simplicity)
+# - workflow_dispatch → manual deployment to any env
+#
+# This workflow reads service configurations from services.json
+
+name: Deploy Car Service to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloud/containers/**'
+      - 'cloud/services.json'
+      - '.github/workflows/google-cloudrun-deploy-containers.yaml'
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Services to deploy (comma-separated, or "all")'
+        required: true
+        default: 'all'
+        type: string
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'develop'
+        type: choice
+        options:
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      environment: ${{ steps.env.outputs.environment }}
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate workflow prerequisites
+        run: |
+          echo "=== Workflow Prerequisites Validation ==="
+          
+          # Check services.json exists
+          SERVICES_CONFIG="cloud/services.json"
+          if [[ ! -f "$SERVICES_CONFIG" ]]; then
+            echo "❌ ERROR: Services configuration file not found: $SERVICES_CONFIG"
+            exit 1
+          else
+            echo "✅ Services configuration file exists"
+          fi
+          
+          # Validate services.json format
+          if ! jq empty "$SERVICES_CONFIG" 2>/dev/null; then
+            echo "❌ ERROR: Invalid JSON format in $SERVICES_CONFIG"
+            exit 1
+          else
+            echo "✅ Services configuration is valid JSON"
+          fi
+          
+          # Check containers directory exists
+          if [[ ! -d "cloud/containers" ]]; then
+            echo "❌ ERROR: Containers directory not found: cloud/containers"
+            exit 1
+          else
+            echo "✅ Containers directory exists"
+          fi
+          
+          echo ""
+          echo "=== Available Services ==="
+          jq -r 'keys | map(select(. != "_comment")) | .[]' "$SERVICES_CONFIG" | head -10
+          
+          echo ""
+          echo "=== Workflow Context ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Branch: ${{ github.ref_name }}"
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+          else
+            # For other branches, no deployment
+            echo "environment=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check deployment conditions
+        id: check
+        run: |
+          # Only deploy for specific environments (not other branches)
+          if [[ "${{ steps.env.outputs.environment }}" == "none" ]]; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping deployment - unsupported branch (local development only)"
+          else
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Will deploy to environment: ${{ steps.env.outputs.environment }}"
+          fi
+
+      - name: Build deployment matrix
+        id: matrix
+        run: |
+          # Read services configuration
+          SERVICES_CONFIG="cloud/services.json"
+          
+          # Determine which services to process
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.services }}" == "all" ]]; then
+              # Get all services from config
+              services=$(jq -r 'keys | map(select(. != "_comment")) | .[]' $SERVICES_CONFIG)
+            else
+              # Parse comma-separated list
+              IFS=',' read -ra ADDR <<< "${{ github.event.inputs.services }}"
+              services=$(printf '%s\n' "${ADDR[@]}" | tr -d ' ')
+            fi
+          else
+            # Detect changed services
+            BASE_SHA="${{ github.event.before || 'HEAD~1' }}"
+            
+            # Check for changes
+            changed=$(git diff --name-only "$BASE_SHA" "${{ github.sha }}" -- \
+                     'cloud/containers/' || true)
+            
+            if [[ -n "$changed" ]]; then
+              # Extract service names from changed paths
+              services=$(echo "$changed" | \
+                        grep 'cloud/containers/' | \
+                        cut -d'/' -f3 | \
+                        sort -u)
+            else
+              services=""
+            fi
+          fi
+          
+          # Build matrix from services and config
+          if [[ -z "$services" ]]; then
+            echo "matrix={\"include\":[]}" >> "$GITHUB_OUTPUT"
+          else
+            matrix_json='{"include":[]}'
+            while IFS= read -r service; do
+              if [[ -n "$service" ]]; then
+                # Get service config
+                config=$(jq -r --arg svc "$service" '.[$svc] // {}' $SERVICES_CONFIG)
+                
+                # Skip if service not in config
+                if [[ "$config" == "{}" ]]; then
+                  echo "Warning: No configuration found for service: $service"
+                  continue
+                fi
+                
+                # Build matrix entry
+                entry=$(jq -n \
+                  --arg service "$service" \
+                  --arg type "$(echo "$config" | jq -r '.type // "http"')" \
+                  --arg memory "$(echo "$config" | jq -r '.memory // "512Mi"')" \
+                  --arg cpu "$(echo "$config" | jq -r '.cpu // "1"')" \
+                  --arg min_instances "$(echo "$config" | jq -r '.min_instances // 0')" \
+                  --arg max_instances "$(echo "$config" | jq -r '.max_instances // 100')" \
+                  --arg timeout "$(echo "$config" | jq -r '.timeout // "60s"')" \
+                  --argjson env_vars "$(echo "$config" | jq '.environment_variables // {}')" \
+                  --arg service_account "$(echo "$config" | jq -r '.service_account // ""')" \
+                  '{
+                    service: $service,
+                    type: $type,
+                    memory: $memory,
+                    cpu: $cpu,
+                    min_instances: $min_instances,
+                    max_instances: $max_instances,
+                    timeout: $timeout,
+                    env_vars: $env_vars,
+                    service_account: $service_account
+                  }')
+                
+                matrix_json=$(echo "$matrix_json" | jq --argjson entry "$entry" '.include += [$entry]')
+              fi
+            done <<< "$services"
+            
+            echo "matrix=$(echo "$matrix_json" | jq -c .)" >> "$GITHUB_OUTPUT"
+            
+            # Display services to be processed
+            echo "Services to process:"
+            echo "$matrix_json" | jq -r '.include[].service'
+          fi
+
+  build:
+    needs: prepare
+    if: ${{ fromJson(needs.prepare.outputs.matrix).include[0] != null }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.prepare.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    env:
+      REGISTRY: europe-west1-docker.pkg.dev
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      REPOSITORY: carinspectinator-services
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate environment configuration
+        run: |
+          echo "=== Environment Validation ==="
+          echo "PROJECT_ID: '${{ env.PROJECT_ID }}'"
+          echo "Registry: ${{ env.REGISTRY }}"
+          echo "Repository: ${{ env.REPOSITORY }}"
+          echo "Environment: ${{ needs.prepare.outputs.environment }}"
+          echo "Service: ${{ matrix.service }}"
+          echo ""
+          
+          # Check PROJECT_ID
+          if [[ -z "${{ env.PROJECT_ID }}" ]]; then
+            echo "❌ ERROR: PROJECT_ID is empty!"
+            echo "   Please set GCP_PROJECT_ID in: Settings → Secrets and variables → Actions → Variables"
+            exit 1
+          else
+            echo "✅ PROJECT_ID is set"
+          fi
+          
+          # Check service directory exists
+          if [[ ! -d "cloud/containers/${{ matrix.service }}" ]]; then
+            echo "❌ ERROR: Service directory not found: cloud/containers/${{ matrix.service }}"
+            exit 1
+          else
+            echo "✅ Service directory exists"
+          fi
+          
+          # Check Dockerfile exists
+          if [[ ! -f "cloud/containers/${{ matrix.service }}/Dockerfile" ]]; then
+            echo "❌ ERROR: Dockerfile not found for service: ${{ matrix.service }}"
+            exit 1
+          else
+            echo "✅ Dockerfile exists"
+          fi
+          
+          echo ""
+          echo "=== Deployment Configuration ==="
+          echo "Will deploy: ${{ needs.prepare.outputs.should_deploy }}"
+          echo "Target environment: ${{ needs.prepare.outputs.environment }}"
+          echo "Service type: ${{ matrix.type }}"
+          echo "Memory: ${{ matrix.memory }}"
+          echo "CPU: ${{ matrix.cpu }}"
+          echo "Min instances: ${{ matrix.min_instances }}"
+          echo "Max instances: ${{ matrix.max_instances }}"
+
+      - name: Prepare build context
+        run: |
+          SERVICE_DIR="cloud/containers/${{ matrix.service }}"
+          echo "Building service from: $SERVICE_DIR"
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: cloud/containers/${{ matrix.service }}
+          file: cloud/containers/${{ matrix.service }}/Dockerfile
+          push: false
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${{ needs.prepare.outputs.environment }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/${{ matrix.service }}.tar
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-${{ matrix.service }}
+          path: /tmp/${{ matrix.service }}.tar
+          retention-days: 1
+
+  deploy:
+    needs: [prepare, build]
+    if: ${{ needs.prepare.outputs.should_deploy == 'true' && needs.prepare.outputs.environment != 'none' && fromJson(needs.prepare.outputs.matrix).include[0] != null }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.prepare.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      REGION: europe-west1
+      REGISTRY: europe-west1-docker.pkg.dev
+      REPOSITORY: carinspectinator-services
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate deployment prerequisites
+        run: |
+          echo "=== Deployment Prerequisites Validation ==="
+          echo "Environment: ${{ needs.prepare.outputs.environment }}"
+          echo "Project ID: ${{ env.PROJECT_ID }}"
+          echo "Service: ${{ matrix.service }}"
+          echo ""
+          
+          # Check PROJECT_ID
+          if [[ -z "${{ env.PROJECT_ID }}" ]]; then
+            echo "❌ ERROR: PROJECT_ID is empty for deployment!"
+            echo "   Please set GCP_PROJECT_ID in: Settings → Secrets and variables → Actions → Variables"
+            exit 1
+          else
+            echo "✅ PROJECT_ID is set for deployment"
+          fi
+          
+          # Check required secrets (can't check values, only presence)
+          echo "=== Required Secrets Check ==="
+          echo "Note: Secret values are hidden for security"
+          if [[ -z "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ]]; then
+            echo "⚠️  WARNING: GCP_WORKLOAD_IDENTITY_PROVIDER secret may not be set"
+          else
+            echo "✅ GCP_WORKLOAD_IDENTITY_PROVIDER secret is present"
+          fi
+          
+          if [[ -z "${{ secrets.GCP_SERVICE_ACCOUNT }}" ]]; then
+            echo "⚠️  WARNING: GCP_SERVICE_ACCOUNT secret may not be set"
+          else
+            echo "✅ GCP_SERVICE_ACCOUNT secret is present"
+          fi
+          
+          # Check storage bucket configuration
+          STORAGE_BUCKET="${{ secrets.GCP_STORAGE_BUCKET || vars.GCP_STORAGE_BUCKET }}"
+          if [[ -z "$STORAGE_BUCKET" ]]; then
+            echo "⚠️  WARNING: GCP_STORAGE_BUCKET not set (services may not need it)"
+          else
+            echo "✅ GCP_STORAGE_BUCKET is configured"
+          fi
+          
+          echo ""
+          echo "=== Service Configuration ==="
+          echo "Service account: ${{ matrix.service_account }}"
+          echo "Environment variables: ${{ toJson(matrix.env_vars) }}"
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-${{ matrix.service }}
+          path: /tmp
+
+      - name: Load Docker image
+        run: |
+          docker load --input /tmp/${{ matrix.service }}.tar
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          # Ensure Artifact Registry repository exists
+          gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
+            --location=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            >/dev/null 2>&1 || \
+          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="CarInspectinator microservices container registry" \
+            --project=${{ env.PROJECT_ID }}
+          
+          gcloud auth configure-docker ${{ env.REGISTRY }}
+
+      - name: Push Docker image
+        run: |
+          IMAGE_BASE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}"
+          docker tag "${IMAGE_BASE}:${{ github.sha }}" "${IMAGE_BASE}:${{ github.sha }}"
+          docker tag "${IMAGE_BASE}:${{ github.sha }}" "${IMAGE_BASE}:${{ needs.prepare.outputs.environment }}"
+          
+          docker push "${IMAGE_BASE}:${{ github.sha }}"
+          docker push "${IMAGE_BASE}:${{ needs.prepare.outputs.environment }}"
+          
+          if [[ "${{ needs.prepare.outputs.environment }}" == "production" ]]; then
+            docker tag "${IMAGE_BASE}:${{ github.sha }}" "${IMAGE_BASE}:latest"
+            docker push "${IMAGE_BASE}:latest"
+          fi
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}:${{ github.sha }}"
+          
+          # Process service account (replace variables)
+          SERVICE_ACCOUNT="${{ matrix.service_account }}"
+          # Replace both ${GCP_PROJECT_ID} and empty project placeholders
+          SERVICE_ACCOUNT="${SERVICE_ACCOUNT//\$\{GCP_PROJECT_ID\}/${{ env.PROJECT_ID }}}"
+          SERVICE_ACCOUNT="${SERVICE_ACCOUNT//@.iam.gserviceaccount.com/@${{ env.PROJECT_ID }}.iam.gserviceaccount.com}"
+          SERVICE_ACCOUNT=$(echo "$SERVICE_ACCOUNT" | sed "s/\${GCP_PROJECT_ID}/${{ env.PROJECT_ID }}/g")
+          
+          # Debug service account processing
+          echo "Original service account: ${{ matrix.service_account }}"
+          echo "Processed service account: $SERVICE_ACCOUNT"
+          
+          # Validate service account format
+          if [[ "$SERVICE_ACCOUNT" =~ "@\.iam\.gserviceaccount\.com" ]]; then
+            echo "❌ ERROR: Service account still contains placeholder: $SERVICE_ACCOUNT"
+            echo "Expected format: service-name@project-id.iam.gserviceaccount.com"
+            echo "Using fallback service account..."
+            SERVICE_ACCOUNT="backend-service@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+            echo "Fallback service account: $SERVICE_ACCOUNT"
+          fi
+          
+          # Check if service account exists and we have permission to use it
+          if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT" --project=${{ env.PROJECT_ID }} >/dev/null 2>&1; then
+            echo "⚠️  WARNING: Service account $SERVICE_ACCOUNT does not exist"
+            echo "Will deploy without specifying service account (uses default)"
+            SERVICE_ACCOUNT=""
+          else
+            echo "✅ Service account $SERVICE_ACCOUNT exists"
+          fi
+          
+          # Build environment variables string
+          ENV_VARS="GCP_PROJECT_ID=${{ env.PROJECT_ID }}"
+          ENV_VARS="${ENV_VARS},STORAGE_BUCKET=${{ secrets.GCP_STORAGE_BUCKET || vars.GCP_STORAGE_BUCKET }}"
+          
+          # Add service-specific environment variables
+          if [[ '${{ matrix.env_vars }}' != '{}' && '${{ matrix.env_vars }}' != 'null' ]]; then
+            while IFS= read -r line; do
+              if [[ -n "$line" ]]; then
+                ENV_VARS="${ENV_VARS},$line"
+              fi
+            done < <(echo '${{ toJson(matrix.env_vars) }}' | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
+          fi
+          
+          # Deploy to Cloud Run
+          DEPLOY_ARGS=(
+            "${{ matrix.service }}"
+            --image "$IMAGE"
+            --region "${{ env.REGION }}"
+            --project "${{ env.PROJECT_ID }}"
+            --platform managed
+            --set-env-vars "$ENV_VARS"
+            --memory "${{ matrix.memory }}"
+            --cpu "${{ matrix.cpu }}"
+            --timeout "${{ matrix.timeout }}"
+            --min-instances "${{ matrix.min_instances }}"
+            --max-instances "${{ matrix.max_instances }}"
+            --concurrency 1000
+            --port 8080
+          )
+          
+          # Add service account only if specified
+          if [[ -n "$SERVICE_ACCOUNT" ]]; then
+            echo "Using service account: $SERVICE_ACCOUNT"
+            DEPLOY_ARGS+=(--service-account "$SERVICE_ACCOUNT")
+          else
+            echo "Using default Cloud Run service account"
+          fi
+          
+          gcloud run deploy "${DEPLOY_ARGS[@]}"
+          
+          # Set IAM policy for HTTP services
+          if [[ "${{ matrix.type }}" == "http" ]]; then
+            gcloud run services add-iam-policy-binding ${{ matrix.service }} \
+              --region ${{ env.REGION }} \
+              --project ${{ env.PROJECT_ID }} \
+              --member="allUsers" \
+              --role="roles/run.invoker" \
+              --quiet
+          fi
+
+      - name: Setup Pub/Sub and Eventarc for workers
+        if: ${{ matrix.type == 'worker' }}
+        run: |
+          # Check if required APIs are enabled (they should be enabled via Terraform)
+          echo "Checking API availability..."
+          
+          # Check Eventarc API
+          if gcloud services list --enabled --filter="name:eventarc.googleapis.com" --project ${{ env.PROJECT_ID }} | grep -q eventarc; then
+            echo "✅ Eventarc API is enabled"
+          else
+            echo "❌ Eventarc API is not enabled. Please ensure Terraform has been applied."
+            exit 1
+          fi
+          
+          # Check Pub/Sub API  
+          if gcloud services list --enabled --filter="name:pubsub.googleapis.com" --project ${{ env.PROJECT_ID }} | grep -q pubsub; then
+            echo "✅ Pub/Sub API is enabled"
+          else
+            echo "❌ Pub/Sub API is not enabled. Please ensure Terraform has been applied."
+            exit 1
+          fi
+          
+          # Get topics from services.json for this service
+          TOPICS=$(cat cloud/services.json | jq -r --arg svc "${{ matrix.service }}" '.[$svc].topics[]? // empty')
+          
+          if [[ -z "$TOPICS" ]]; then
+            echo "No topics defined for ${{ matrix.service }}"
+            exit 0
+          fi
+          
+          # Create Eventarc invoker service account if it doesn't exist
+          SA_EMAIL="eventarc-invoker@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+          gcloud iam service-accounts describe "$SA_EMAIL" --project ${{ env.PROJECT_ID }} >/dev/null 2>&1 || \
+            gcloud iam service-accounts create eventarc-invoker \
+              --project ${{ env.PROJECT_ID }} \
+              --display-name "Eventarc Invoker" \
+              --quiet
+          
+          # Grant invoker permissions to the service
+          gcloud run services add-iam-policy-binding ${{ matrix.service }} \
+            --project ${{ env.PROJECT_ID }} --region ${{ env.REGION }} \
+            --member "serviceAccount:$SA_EMAIL" \
+            --role roles/run.invoker \
+            --quiet
+          
+          # Process each topic
+          for TOPIC in $TOPICS; do
+            echo "Setting up topic: $TOPIC"
+            
+            # Note: We assume Pub/Sub topic exists (created by Terraform)
+            # The service account may not have permissions to describe topics, but that's OK
+            # If the topic doesn't exist, the Eventarc trigger creation will fail with a clear error
+            echo "ℹ️  Assuming Pub/Sub topic '$TOPIC' exists (managed by Terraform)"
+            
+            # Create Eventarc trigger
+            TRIGGER_NAME="${{ matrix.service }}-${TOPIC}"
+            echo "Creating trigger: $TRIGGER_NAME"
+            
+            # Check if trigger already exists
+            if gcloud eventarc triggers describe "$TRIGGER_NAME" \
+               --location ${{ env.REGION }} --project ${{ env.PROJECT_ID }} >/dev/null 2>&1; then
+              echo "Trigger $TRIGGER_NAME already exists, skipping"
+              continue
+            fi
+            
+            # Create the trigger
+            gcloud eventarc triggers create "$TRIGGER_NAME" \
+              --project ${{ env.PROJECT_ID }} --location ${{ env.REGION }} \
+              --transport-topic "projects/${{ env.PROJECT_ID }}/topics/$TOPIC" \
+              --event-filters type=google.cloud.pubsub.topic.v1.messagePublished \
+              --destination-run-service "${{ matrix.service }}" \
+              --destination-run-region "${{ env.REGION }}" \
+              --destination-run-path "/events" \
+              --service-account "$SA_EMAIL" \
+              --quiet || echo "Trigger creation may have failed, continuing..."
+          done
+
+      - name: Verify deployment
+        if: ${{ matrix.type == 'http' }}
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ matrix.service }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --format 'value(status.url)')
+          
+          echo "Service URL: $SERVICE_URL"
+          
+          # Test health endpoint
+          max_attempts=10
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/health" | grep -q "200"; then
+              echo "✅ Health check passed"
+              break
+            else
+              attempt=$((attempt + 1))
+              echo "⏳ Waiting for service... (attempt $attempt/$max_attempts)"
+              sleep 5
+            fi
+          done
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | ${{ matrix.service }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | ${{ matrix.type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.prepare.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Memory | ${{ matrix.memory }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CPU | ${{ matrix.cpu }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY

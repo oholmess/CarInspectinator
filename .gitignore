@@ -1,0 +1,39 @@
+# venv
+venv/
+
+# cloud
+cloud/venv/
+cloud/.venv/
+cloud/.env
+
+# secrets
+secrets/
+
+# logs
+logs/
+
+# data
+data/
+
+# results
+results/
+
+# tmp
+tmp/
+
+# __pycache__
+__pycache__/
+
+# .DS_Store
+.DS_Store
+
+#any venv anywhere
+.venv/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.test
+.env.production

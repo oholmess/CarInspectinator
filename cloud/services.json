@@ -1,0 +1,17 @@
+{
+  "_comment": "Service configuration for CarInspectinator microservices",
+  "car-service": {
+    "type": "http",
+    "memory": "512Mi",
+    "cpu": "1",
+    "min_instances": 0,
+    "max_instances": 10,
+    "timeout": "60s",
+    "service_account": "backend-service@${GCP_PROJECT_ID}.iam.gserviceaccount.com",
+    "environment_variables": {
+      "PYTHON_ENV": "production",
+      "LOG_LEVEL": "info"
+    }
+  }
+}
+

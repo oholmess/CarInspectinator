@@ -13,7 +13,7 @@ struct CarCard: View {
     
     var body: some View {
         VStack {
-            Image(car.icon ?? "")
+            Image(car.iconAssetName ?? "")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .padding(.bottom, -10)
@@ -54,5 +54,5 @@ struct CarCard: View {
 }
 
 #Preview {
-    CarCard(car: carsArray[0])
+    CarCard(car: cars[0])
 }

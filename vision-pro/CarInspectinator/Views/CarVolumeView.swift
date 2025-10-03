@@ -10,7 +10,6 @@ import RealityKit
 import RealityKitContent
 
 struct CarVolumeView: View {
-    
     @Environment(AppModel.self) private var appModel
     
     let carVolumeId: String

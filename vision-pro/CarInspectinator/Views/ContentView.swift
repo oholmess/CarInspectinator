@@ -9,12 +9,12 @@ import SwiftUI
 import RealityKit
 
 struct ContentView: View {
-
     @Environment(AppModel.self) private var appModel
+    @Environment(\.injected) private var injected: CIContainer
     @State private var path = NavigationPath()
 
     var body: some View {
-        HopePageView()
+        injected.makeHomePageView().environment(appModel)
     }
 }
 

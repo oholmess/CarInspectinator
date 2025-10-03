@@ -7,10 +7,16 @@
 
 import SwiftUI
 
-struct HopePageView: View {
+struct HopePageView<T>: View where T: HomePageViewModelType {
+    @Environment(\.injected) private var injected: CIContainer
     @Environment(AppModel.self) private var appModel
+    @StateObject private var vm: T
     
     @State private var path = NavigationPath()
+    
+    init(vm: T) {
+        self._vm = StateObject(wrappedValue: vm)
+    }
     
     var body: some View {
         NavigationStack(path: $path) {
@@ -37,7 +43,7 @@ struct HopePageView: View {
                         alignment: .leading,
                         spacing: 10
                     ) {
-                        ForEach(carsArray, id: \.self) { car in
+                        ForEach(vm.cars, id: \.self) { car in
                             CarCard(car: car)
                         }
                     }.padding()
@@ -45,21 +51,78 @@ struct HopePageView: View {
             }
             .navigationDestination(for: Car.self) { car in
                 CarDetailedView(car: car)
+                    .navigationBarBackButtonHidden()
             }
             .onChange(of: appModel.selectedCar) { _, newValue in
                 guard let car = newValue else { return }
                 path.append(car)
+            }
+            .onChange(of: path) { oldPath, newPath in
+                // Clear selectedCar when navigating back
+                if newPath.count < oldPath.count {
+                    appModel.selectedCar = nil
+                }
+            }
+            .task {
+                await getCars()
+            }
+            .safeAreaBar(edge: .bottom, content: errorView)
+            .overlay {
+                if vm.isLoading {
+                    ProgressView()
+                }
+            }
+        }
+    }
+}
 
-                // Defer the reset to avoid mutating during the same update cycle
-//                DispatchQueue.main.async {
-//                    appModel.selectedCar = nil
-//                }
+extension HopePageView {
+    
+    @ViewBuilder
+    func errorView() -> some View {
+        if let error = vm.error {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Error!")
+                        .font(.title)
+                        .foregroundStyle(.red)
+                    Text("Could not retreive cars. Please try again.")
+                        .font(.subheadline)
+                        .foregroundStyle(.black.opacity(0.8))
+                    Text("Error: \(error.localizedDescription)")
+                        .font(.caption)
+                        .foregroundStyle(.black.opacity(0.8))
+                        .padding(.top)
+                }
+                .padding()
+                .background {
+                    RoundedRectangle(cornerRadius: 8)
+                }
+                
+                Button {
+                    Task { await getCars() }
+                } label: {
+                    Label("Retry", systemImage: "arrow.trianglehead.2.clockwise")
+                }
+            }
+            
+        }
+    }
+    
+    
+    func getCars() async {
+        do {
+            try await vm.getCars()
+        } catch {
+            withAnimation { vm.error = error }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                withAnimation { self.vm.error = nil }
             }
         }
     }
 }
 
 #Preview {
-    HopePageView()
+    HopePageView(vm: HomePageViewModel(networkHandler: NetworkHandler()))
         .environment(AppModel())
 }

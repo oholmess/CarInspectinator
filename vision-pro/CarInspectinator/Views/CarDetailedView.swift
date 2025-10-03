@@ -41,7 +41,6 @@ struct CarDetailedView: View {
 
 // MARK: - Sections
 private extension CarDetailedView {
-    
     var backButton: some View {
         HStack {
             Button {
@@ -49,8 +48,10 @@ private extension CarDetailedView {
             } label: {
                 Label("Back", image: "chevron.left")
             }
+            
             Spacer()
         }
+        .padding(.top)
     }
 
     var heroHeader: some View {
@@ -85,15 +86,6 @@ private extension CarDetailedView {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(car.make) \(car.model), \(car.year.map(String.init) ?? "Year unknown")")
     }
-    
-//    @ViewBuilder
-//    var carVolumeView: some View {
-//        if let volumeId = car.volumeID {
-//            CarVolumeView(carVolumeId: volumeId)
-//        } else {
-//            EmptyView()
-//        }
-//    }
 
     var specsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -126,7 +118,6 @@ private extension CarDetailedView {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
         }
-        
     }
 
     var immersiveSection: some View {
@@ -177,7 +168,7 @@ private extension CarDetailedView {
 
     var carArtwork: some View {
         Group {
-            if let icon = car.icon, !icon.isEmpty {
+            if let icon = car.iconAssetName, !icon.isEmpty {
                 Image(icon)
                     .resizable()
                     .scaledToFit()
@@ -210,19 +201,17 @@ private extension CarDetailedView {
 
     func specItems() -> [SpecItem] {
         [
-            SpecItem(label: "Horsepower", value: car.horsepower.map { "\($0) hp" } ?? "—", icon: "speedometer"),
+            SpecItem(label: "Horsepower", value: car.performance?.horsepower.map { "\($0) hp" } ?? "—", icon: "speedometer"),
             SpecItem(label: "Body Style", value: car.bodyStyle?.rawValue ?? "—", icon: "car.side"),
             SpecItem(label: "Year", value: car.year.map(String.init) ?? "—", icon: "calendar"),
-            SpecItem(label: "Engine Size", value: car.engineSize ?? "—", icon: "engine.combustion"),
-            SpecItem(label: "Engine Type", value: car.engineType ?? "—", icon: "bolt.fill")
+            SpecItem(label: "Engine Fuel Type", value: car.engine?.fuel?.rawValue ?? "—", icon: "engine.combustion"),
+            SpecItem(label: "Engine Cynlinders Count", value: String(car.engine?.cylinders ?? 0), icon: "bolt.fill")
         ]
     }
 
     @ViewBuilder
     func specChip(_ item: SpecItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-           
-
             VStack(alignment: .leading, spacing: 2) {
                 Image(systemName: item.icon)
                     .imageScale(.medium)
@@ -275,7 +264,7 @@ private extension CarDetailedView {
         if is3DModelOpen {
             is3DModelOpen = false
         } else {
-            if let volumeId = appModel.selectedCar?.volumeID {
+            if let volumeId = appModel.selectedCar?.volumeId {
                 print("volumeId: ", volumeId)
                 openWindow(id: volumeId)
             } else {
@@ -294,7 +283,7 @@ private extension CarDetailedView {
 // MARK: - Preview
 #Preview(windowStyle: .automatic) {
     NavigationStack {
-        CarDetailedView(car: carsArray[0])
+        CarDetailedView(car: cars[0])
             .environment(AppModel())
             .padding()
     }

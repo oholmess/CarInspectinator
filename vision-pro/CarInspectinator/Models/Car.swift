@@ -547,8 +547,8 @@ let cars: [Car] = [
         ]
     ),
     Car(make: "BMW", model: "M3", iconAssetName: "bmw_m3", volumeId: "BMW_M4_f82"),
-    Car(make: "Audi", model: "RS7", iconAssetName: "audi_rs7"),
-    Car(make: "Mercedes", model: "G63", iconAssetName: "mercedes_g63"),
-    Car(make: "Toyota", model: "Supra", iconAssetName: "toyota_supra")
+    Car(make: "Audi", model: "RS7", iconAssetName: "audi_rs7", volumeId: "2020_Audi_RS7_Sportback"),
+    Car(make: "Mercedes", model: "G63", iconAssetName: "mercedes_g63", volumeId: "2020_Mercedes-Benz_G-Class_AMG_G63"),
+    Car(make: "Toyota", model: "Supra", iconAssetName: "toyota_supra", volumeId: "Toyota_Supra")
 ]
 

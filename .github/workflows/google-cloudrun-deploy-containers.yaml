@@ -361,16 +361,37 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Enable required GCP APIs
+      - name: Verify required GCP APIs
         run: |
-          echo "Ensuring required APIs are enabled..."
-          gcloud services enable \
-            artifactregistry.googleapis.com \
-            run.googleapis.com \
-            cloudbuild.googleapis.com \
-            --project=${{ env.PROJECT_ID }} \
-            --quiet
-          echo "✅ Required APIs enabled"
+          echo "Verifying required APIs are enabled..."
+          
+          # Check if APIs are enabled (this doesn't require special permissions)
+          REQUIRED_APIS=(
+            "artifactregistry.googleapis.com"
+            "run.googleapis.com"
+            "cloudbuild.googleapis.com"
+          )
+          
+          MISSING_APIS=()
+          for api in "${REQUIRED_APIS[@]}"; do
+            if ! gcloud services list --enabled --project=${{ env.PROJECT_ID }} \
+                --filter="name:$api" --format="value(name)" | grep -q "$api"; then
+              MISSING_APIS+=("$api")
+            fi
+          done
+          
+          if [ ${#MISSING_APIS[@]} -ne 0 ]; then
+            echo "❌ ERROR: The following APIs are not enabled:"
+            printf '%s\n' "${MISSING_APIS[@]}"
+            echo ""
+            echo "Please enable them by running:"
+            echo "gcloud services enable ${MISSING_APIS[*]} --project=${{ env.PROJECT_ID }}"
+            echo ""
+            echo "Or visit: https://console.cloud.google.com/apis/library?project=${{ env.PROJECT_ID }}"
+            exit 1
+          fi
+          
+          echo "✅ All required APIs are enabled"
 
       - name: Configure Docker for Artifact Registry
         run: |

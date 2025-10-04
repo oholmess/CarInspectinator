@@ -358,6 +358,8 @@ jobs:
       - name: Load Docker image
         run: |
           docker load --input /tmp/${{ matrix.service }}.tar
+          echo "Loaded images:"
+          docker images | grep "${{ matrix.service }}" || docker images
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -376,13 +378,17 @@ jobs:
       - name: Push Docker image
         run: |
           IMAGE_BASE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ matrix.service }}"
-          docker tag "${IMAGE_BASE}:${{ github.sha }}" "${IMAGE_BASE}:${{ github.sha }}"
-          docker tag "${IMAGE_BASE}:${{ github.sha }}" "${IMAGE_BASE}:${{ needs.prepare.outputs.environment }}"
           
+          echo "Pushing image with tags:"
+          echo "  - ${IMAGE_BASE}:${{ github.sha }}"
+          echo "  - ${IMAGE_BASE}:${{ needs.prepare.outputs.environment }}"
+          
+          # Images already have tags from build step, just push them
           docker push "${IMAGE_BASE}:${{ github.sha }}"
           docker push "${IMAGE_BASE}:${{ needs.prepare.outputs.environment }}"
           
           if [[ "${{ needs.prepare.outputs.environment }}" == "production" ]]; then
+            # Tag and push latest for production
             docker tag "${IMAGE_BASE}:${{ github.sha }}" "${IMAGE_BASE}:latest"
             docker push "${IMAGE_BASE}:latest"
           fi

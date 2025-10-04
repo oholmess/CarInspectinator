@@ -2,11 +2,13 @@
 
 ## 🚀 Quick Setup (5 minutes)
 
-### 1. Get Firebase Credentials
+### 1. Authenticate with GCP
 ```bash
-# Set your service account key path
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-service-account-key.json"
+# Set up Application Default Credentials (ADC)
+gcloud auth application-default login
 ```
+
+This will open your browser for authentication and save credentials locally.
 
 ### 2. Seed Firestore
 ```bash

@@ -361,6 +361,17 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
+      - name: Enable required GCP APIs
+        run: |
+          echo "Ensuring required APIs are enabled..."
+          gcloud services enable \
+            artifactregistry.googleapis.com \
+            run.googleapis.com \
+            cloudbuild.googleapis.com \
+            --project=${{ env.PROJECT_ID }} \
+            --quiet
+          echo "✅ Required APIs enabled"
+
       - name: Configure Docker for Artifact Registry
         run: |
           # Ensure Artifact Registry repository exists

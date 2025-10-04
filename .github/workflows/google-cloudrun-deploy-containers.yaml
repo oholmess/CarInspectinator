@@ -368,17 +368,9 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: |
-          # Ensure Artifact Registry repository exists
-          gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
-            --location=${{ env.REGION }} \
-            --project=${{ env.PROJECT_ID }} \
-            >/dev/null 2>&1 || \
-          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
-            --repository-format=docker \
-            --location=${{ env.REGION }} \
-            --description="CarInspectinator microservices container registry" \
-            --project=${{ env.PROJECT_ID }}
-          
+          # Note: Artifact Registry repository 'carinspectinator-services' must exist
+          # It's created as part of project setup (one-time)
+          # Configure Docker to use Artifact Registry
           gcloud auth configure-docker ${{ env.REGISTRY }}
 
       - name: Push Docker image

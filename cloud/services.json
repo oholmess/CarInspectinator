@@ -10,7 +10,9 @@
     "service_account": "backend-service@${GCP_PROJECT_ID}.iam.gserviceaccount.com",
     "environment_variables": {
       "PYTHON_ENV": "production",
-      "LOG_LEVEL": "info"
+      "LOG_LEVEL": "info",
+      "STORAGE_BUCKET": "carinspectinator-car-models",
+      "MODEL_URL_EXPIRATION_HOURS": "24"
     }
   }
 }

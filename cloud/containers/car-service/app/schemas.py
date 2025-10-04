@@ -202,6 +202,7 @@ class Car(BaseModel):
     interiorColor: Optional[str] = None
     interiorPanoramaAssetName: Optional[str] = None
     volumeId: Optional[str] = None
+    modelUrl: Optional[str] = None  # Signed GCS URL for 3D model (USDZ)
 
     # Typed substructures
     engine: Optional[Engine] = None

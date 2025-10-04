@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.schemas import Car
 from app.firebase import get_firestore_client
+from app.storage import get_model_url_for_volume_id
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ def get_cars() -> List[Car]:
     Get all cars from Firestore.
     
     Returns:
-        List of Car objects
+        List of Car objects with signed model URLs
     """
     try:
         db = get_firestore_client()
@@ -32,6 +33,11 @@ def get_cars() -> List[Car]:
                 # Firestore ID is the string UUID
                 car_data['id'] = doc.id
                 car = Car(**car_data)
+                
+                # Generate signed URL for 3D model if volumeId exists
+                if car.volumeId and not car.modelUrl:
+                    car.modelUrl = get_model_url_for_volume_id(car.volumeId)
+                
                 cars.append(car)
             except Exception as e:
                 logger.error(f"Error parsing car document {doc.id}: {e}")
@@ -53,7 +59,7 @@ def get_car(car_id: str) -> Optional[Car]:
         car_id: UUID string of the car
         
     Returns:
-        Car object if found, None otherwise
+        Car object with signed model URL if found, None otherwise
     """
     try:
         # Validate UUID format
@@ -74,6 +80,10 @@ def get_car(car_id: str) -> Optional[Car]:
         car_data = doc.to_dict()
         car_data['id'] = doc.id
         car = Car(**car_data)
+        
+        # Generate signed URL for 3D model if volumeId exists
+        if car.volumeId and not car.modelUrl:
+            car.modelUrl = get_model_url_for_volume_id(car.volumeId)
         
         logger.info(f"Retrieved car: {car_id}")
         return car

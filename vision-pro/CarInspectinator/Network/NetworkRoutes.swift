@@ -9,7 +9,7 @@
 import Foundation
 
 enum NetworkRoutes {
-    private static let baseUrl = "http://localhost:8080"
+    private static let baseUrl = "https://car-service-469466026461.europe-west1.run.app"
     
     case getCar(carId: String)
     case getCars

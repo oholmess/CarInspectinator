@@ -111,6 +111,7 @@ struct Car: Identifiable, Hashable, Equatable, Codable, Sendable {
     let interiorColor: String?
     let interiorPanoramaAssetName: String?
     let volumeId: String?
+    let modelUrl: String?  // Signed GCS URL for 3D model
 
     // Typed substructures
     let engine: Engine?
@@ -133,6 +134,7 @@ struct Car: Identifiable, Hashable, Equatable, Codable, Sendable {
         interiorColor: String? = nil,
         interiorPanoramaAssetName: String? = nil,
         volumeId: String? = nil,
+        modelUrl: String? = nil,
         engine: Engine? = nil,
         performance: Performance? = nil,
         dimensions: Dimensions? = nil,
@@ -150,6 +152,7 @@ struct Car: Identifiable, Hashable, Equatable, Codable, Sendable {
         self.interiorColor = interiorColor
         self.interiorPanoramaAssetName = interiorPanoramaAssetName
         self.volumeId = volumeId
+        self.modelUrl = modelUrl
         self.engine = engine
         self.performance = performance
         self.dimensions = dimensions

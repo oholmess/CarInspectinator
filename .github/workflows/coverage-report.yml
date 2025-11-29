@@ -1,0 +1,89 @@
+name: Coverage Report
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    name: Generate Coverage Badge
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.2'
+    
+    - name: Run tests with coverage
+      working-directory: vision-pro
+      run: |
+        xcodebuild test \
+          -project CarInspectinator.xcodeproj \
+          -scheme CarInspectinator \
+          -destination 'platform=visionOS Simulator,name=Apple Vision Pro' \
+          -enableCodeCoverage YES \
+          -derivedDataPath DerivedData
+    
+    - name: Extract coverage percentage
+      id: coverage
+      working-directory: vision-pro
+      run: |
+        COVERAGE=$(xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult | \
+          python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"{data['lineCoverage']:.1f}\")")
+        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Code Coverage: ${COVERAGE}%"
+    
+    - name: Create coverage badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: YOUR_GIST_ID_HERE
+        filename: coverage-badge.json
+        label: Coverage
+        message: ${{ steps.coverage.outputs.coverage }}%
+        valColorRange: ${{ steps.coverage.outputs.coverage }}
+        maxColorRange: 100
+        minColorRange: 0
+    
+    - name: Generate detailed coverage report
+      working-directory: vision-pro
+      run: |
+        mkdir -p coverage-report
+        xcrun xccov view --report DerivedData/Logs/Test/*.xcresult > coverage-report/coverage.txt
+        xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult > coverage-report/coverage.json
+        
+        # Generate HTML report (if you have a tool for this)
+        echo "# Code Coverage Report" > coverage-report/README.md
+        echo "" >> coverage-report/README.md
+        echo "Generated: $(date)" >> coverage-report/README.md
+        echo "" >> coverage-report/README.md
+        cat coverage-report/coverage.txt >> coverage-report/README.md
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: vision-pro/coverage-report/
+    
+    - name: Commit coverage report to repo
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        mkdir -p test-reports
+        cp -r vision-pro/coverage-report/* test-reports/
+        
+        git add test-reports/
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update coverage report [skip ci]"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
+

@@ -1,0 +1,3 @@
+# This file ensures the test-reports directory is tracked by git
+# Coverage reports will be automatically generated and committed here by CI
+

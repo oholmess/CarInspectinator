@@ -2,7 +2,7 @@
 //  NetworkHandler.swift
 //  CarInspectinator
 //
-//  Created by Oliver Holmes on 10/3/25.
+//  Refactored to follow Single Responsibility and Dependency Inversion principles
 //
 
 import Foundation
@@ -18,7 +18,41 @@ enum ContentType: String {
     case json = "application/json; charset=utf-8"
 }
 
-class NetworkHandler {
+// MARK: - Protocol (Dependency Inversion Principle)
+
+protocol NetworkHandlerProtocol {
+    func request(
+        _ url: URL,
+        jsonDictionary: Any?,
+        httpMethod: String,
+        contentType: String,
+        accessToken: String?
+    ) async throws -> Data
+    
+    func request<ResponseType: Decodable>(
+        _ url: URL,
+        jsonDictionary: Any?,
+        responseType: ResponseType.Type,
+        httpMethod: String,
+        contentType: String,
+        accessToken: String?
+    ) async throws -> ResponseType
+}
+
+// MARK: - Implementation
+
+class NetworkHandler: NetworkHandlerProtocol {
+    private let logger: LoggerProtocol
+    private let urlSession: URLSession
+    
+    init(
+        logger: LoggerProtocol = LoggerFactory.shared.logger(for: "Network"),
+        urlSession: URLSession = .shared
+    ) {
+        self.logger = logger
+        self.urlSession = urlSession
+    }
+    
     func request(
         _ url: URL,
         jsonDictionary: Any? = nil,
@@ -28,22 +62,24 @@ class NetworkHandler {
     ) async throws -> Data {
         var urlRequest = makeUrlRequest(url, httpMethod: httpMethod, contentType: contentType, accessToken: accessToken)
         
-        if let jsonDictionary, let httpBody = try? JSONSerialization.data(withJSONObject: jsonDictionary) {
+        if let jsonDictionary {
+            guard let httpBody = try? JSONSerialization.data(withJSONObject: jsonDictionary) else {
+                logger.error("Failed to serialize object to JSON data", file: #file, function: #function, line: #line)
+                throw NetworkError.encodingError
+            }
             urlRequest.httpBody = httpBody
-        } else if jsonDictionary != nil {
-            print("Failed to serialize object to JSON data")
-            throw ConfigurationError.nilObject
         }
         
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        let (data, response) = try await urlSession.data(for: urlRequest)
+        
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("Could not create HTTPURLResponse for url: \(urlRequest.url?.absoluteString ?? "")")
+            logger.error("Could not create HTTPURLResponse for url: \(urlRequest.url?.absoluteString ?? "")", file: #file, function: #function, line: #line)
             throw NetworkError.noResponse
         }
         
         let statusCode = httpResponse.statusCode
         guard 200...299 ~= statusCode else {
-            print("Failed status code: \(statusCode)")
+            logger.error("Failed status code: \(statusCode)", file: #file, function: #function, line: #line)
             throw NetworkError.failedStatusCodeResponseData(statusCode, data)
         }
         
@@ -58,46 +94,49 @@ class NetworkHandler {
         contentType: String = ContentType.json.rawValue,
         accessToken: String? = nil
     ) async throws -> ResponseType {
-        let data = try await request(url, jsonDictionary: jsonDictionary, httpMethod: httpMethod, contentType: contentType, accessToken: accessToken)
+        let data = try await request(
+            url, 
+            jsonDictionary: jsonDictionary, 
+            httpMethod: httpMethod, 
+            contentType: contentType, 
+            accessToken: accessToken
+        )
         
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("DEBUG: Data received in function \(#function):\n\(String(describing: responseString.first))")
-        } else {
-            print("DEBUG: Data received in function \(#function) could not be converted to string.")
+        do {
+            let decoded = try JSONDecoder().decode(responseType, from: data)
+            logger.debug("Successfully decoded response of type \(ResponseType.self)", file: #file, function: #function, line: #line)
+            return decoded
+        } catch {
+            logger.error("Failed to decode response: \(error.localizedDescription)", file: #file, function: #function, line: #line)
+            throw NetworkError.decodingError
         }
-        
-        print("DEBUG: decoded data: ", try JSONDecoder().decode(responseType, from: data))
-        
-        return try JSONDecoder().decode(responseType, from: data)
     }
-}
-
-
-extension NetworkHandler {
-    func makeUrlRequest(
+    
+    // MARK: - Private Helpers
+    
+    private func makeUrlRequest(
         _ url: URL,
-        httpMethod: String = HttpMethod.get.rawValue,
-        contentType: String? = ContentType.json.rawValue,
-        accessToken: String? = nil
+        httpMethod: String,
+        contentType: String?,
+        accessToken: String?
     ) -> URLRequest {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = httpMethod
-        print("DEBUG: HTTP Method: \(httpMethod)")
+        logger.debug("HTTP Method: \(httpMethod)", file: #file, function: #function, line: #line)
         
         if let contentType {
             urlRequest.addValue(contentType, forHTTPHeaderField: "Content-Type")
             
-            if contentType.ranges(of: "json") != nil {
+            if contentType.contains("json") {
                 urlRequest.addValue(contentType, forHTTPHeaderField: "Accept")
             }
         }
         
-        if let accessToken = accessToken {
-            let authorizationKey = "Bearer ".appending(accessToken)
+        if let accessToken {
+            let authorizationKey = "Bearer \(accessToken)"
             urlRequest.addValue(authorizationKey, forHTTPHeaderField: "Authorization")
         }
         
         return urlRequest
     }
-    
 }

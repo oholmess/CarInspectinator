@@ -265,18 +265,12 @@ private extension CarDetailedView {
             is3DModelOpen = false
         } else {
             if let volumeId = appModel.selectedCar?.volumeId {
-                print("volumeId: ", volumeId)
                 openWindow(id: volumeId)
+                is3DModelOpen = true
             } else {
-                print("no volume ID, selected car: ", appModel.selectedCar ?? "n")
                 is3DModelOpen = false
             }
-            // If your API returns a result enum, check it here for success:
-            // if case .opened = result { isImmersiveModeOn = true }
-            // Fallback: assume success
-            is3DModelOpen = true
         }
-        
     }
 }
 

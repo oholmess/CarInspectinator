@@ -2,67 +2,68 @@
 //  CarService.swift
 //  CarInspectinator
 //
-//  Created by Oliver Holmes on 10/3/25.
+//  Refactored to follow DRY and SOLID principles
 //
 
 import Foundation
 import Combine
 
+// MARK: - Protocol (Interface Segregation & Dependency Inversion)
+
 protocol CarServiceType: ObservableObject {
-    func getCar(_ carId: String) async -> Car?
-    func getCars() async -> [Car]?
+    func getCar(_ carId: String) async throws -> Car
+    func getCars() async throws -> [Car]
 }
+
+// MARK: - Implementation
 
 class CarService: CarServiceType {
-    private let networkHandler: NetworkHandler
+    private let networkHandler: NetworkHandlerProtocol
+    private let logger: LoggerProtocol
     
-    init(networkHandler: NetworkHandler = NetworkHandler()) {
+    init(
+        networkHandler: NetworkHandlerProtocol = NetworkHandler(),
+        logger: LoggerProtocol = LoggerFactory.shared.logger(for: "CarService")
+    ) {
         self.networkHandler = networkHandler
-    }
-}
-
-extension CarService {
-    func getCar(_ carId: String) async -> Car? {
-        do {
-            let route = NetworkRoutes.getCar(carId: carId)
-            let method = route.method
-            guard let url = route.url else {
-                print("Failed to create/find URL")
-                throw ConfigurationError.nilObject
-            }
-            
-            let responseData = try await networkHandler.request(url,
-                                                                responseType: Car.self,
-                                                                httpMethod: method.rawValue)
-            
-            print("Response data: \(responseData)")
-            
-            return responseData
-        } catch {
-            print("Error fetching current car with ID: \(carId) with error: ", error)
-            return nil
-        }
+        self.logger = logger
     }
     
-    func getCars() async -> [Car]? {
+    // MARK: - Public Methods
+    
+    func getCar(_ carId: String) async throws -> Car {
+        logger.info("Fetching car with ID: \(carId)", file: #file, function: #function, line: #line)
+        return try await performRequest(route: .getCar(carId: carId))
+    }
+    
+    func getCars() async throws -> [Car] {
+        logger.info("Fetching all cars", file: #file, function: #function, line: #line)
+        return try await performRequest(route: .getCars)
+    }
+    
+    // MARK: - Private Helpers (DRY Principle)
+    
+    private func performRequest<T: Decodable>(route: NetworkRoutes) async throws -> T {
+        guard let url = route.url else {
+            logger.error("Failed to create URL for route: \(route)", file: #file, function: #function, line: #line)
+            throw ConfigurationError.nilObject
+        }
+        
         do {
-            let route = NetworkRoutes.getCars
-            let method = route.method
-            guard let url = route.url else {
-                print("Failed to create/find URL")
-                throw ConfigurationError.nilObject
-            }
+            let result: T = try await networkHandler.request(
+                url,
+                jsonDictionary: nil,
+                responseType: T.self,
+                httpMethod: route.method.rawValue,
+                contentType: ContentType.json.rawValue,
+                accessToken: nil
+            )
             
-            let responseData = try await networkHandler.request(url,
-                                                                responseType: [Car].self,
-                                                                httpMethod: method.rawValue)
-            
-            print("Response data: \(responseData)")
-            
-            return responseData
+            logger.debug("Successfully fetched data for route: \(route)", file: #file, function: #function, line: #line)
+            return result
         } catch {
-            print("Error fetching current cars with error: ", error)
-            return nil
+            logger.error("Failed to fetch data: \(error.localizedDescription)", file: #file, function: #function, line: #line)
+            throw error
         }
     }
 }

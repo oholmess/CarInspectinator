@@ -2,7 +2,7 @@
 //  CarVolumeView.swift
 //  CarInspectinator
 //
-//  Created by Oliver Holmes on 9/30/25.
+//  Refactored to use dependency injection and proper logging
 //
 
 import SwiftUI
@@ -11,12 +11,15 @@ import RealityKitContent
 
 struct CarVolumeView: View {
     @Environment(AppModel.self) private var appModel
+    @Environment(\.injected) private var container: CIContainer
     
     let carVolumeId: String
     
     @State private var modelEntity: ModelEntity?
     @State private var isLoading = false
     @State private var loadError: String?
+    
+    private let logger = LoggerFactory.shared.logger(for: "CarVolumeView")
     
     // Get the car from appModel.selectedCar if it matches this volumeId
     private var car: Car? {
@@ -85,10 +88,12 @@ struct CarVolumeView: View {
         loadError = nil
         
         do {
+            let downloader = container.modelDownloader
+            
             // Priority 1: Load from URL if available
             if let car = car, let modelUrl = car.modelUrl, !modelUrl.isEmpty {
-                print("Loading model from URL: \(modelUrl)")
-                if let localURL = try await downloadModelIfNeeded(from: modelUrl, volumeId: carVolumeId) {
+                logger.info("Loading model from URL: \(modelUrl)", file: #file, function: #function, line: #line)
+                if let localURL = try await downloadModelIfNeeded(from: modelUrl, volumeId: carVolumeId, downloader: downloader) {
                     modelEntity = try await loadModelFromFile(url: localURL)
                     isLoading = false
                     return
@@ -96,9 +101,8 @@ struct CarVolumeView: View {
             }
             
             // Priority 2: Load from cache if available
-            let downloader = ModelDownloader.shared
             if downloader.isCached(volumeId: carVolumeId) {
-                print("Loading model from cache: \(carVolumeId)")
+                logger.info("Loading model from cache: \(carVolumeId)", file: #file, function: #function, line: #line)
                 let cachedURL = downloader.cacheURL(for: carVolumeId)
                 modelEntity = try await loadModelFromFile(url: cachedURL)
                 isLoading = false
@@ -106,20 +110,18 @@ struct CarVolumeView: View {
             }
             
             // Priority 3: Load from bundle (fallback)
-            print("Loading model from bundle: \(carVolumeId)")
+            logger.info("Loading model from bundle: \(carVolumeId)", file: #file, function: #function, line: #line)
             modelEntity = try await loadModelFromBundle(named: carVolumeId)
             isLoading = false
             
         } catch {
-            print("Error loading model: \(error)")
+            logger.error("Error loading model: \(error.localizedDescription)", file: #file, function: #function, line: #line)
             loadError = error.localizedDescription
             isLoading = false
         }
     }
     
-    private func downloadModelIfNeeded(from urlString: String, volumeId: String) async throws -> URL? {
-        let downloader = ModelDownloader.shared
-        
+    private func downloadModelIfNeeded(from urlString: String, volumeId: String, downloader: ModelDownloaderProtocol) async throws -> URL? {
         // Check cache first
         if downloader.isCached(volumeId: volumeId) {
             return downloader.cacheURL(for: volumeId)

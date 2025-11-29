@@ -2,31 +2,62 @@
 //  CIContainer.swift
 //  CarInspectinator
 //
-//  Created by Oliver Holmes on 10/3/25.
+//  Refactored to follow Dependency Injection and SOLID principles
 //
 
 import SwiftUI
 import Foundation
 
+/// Dependency injection container following SOLID principles
 final class CIContainer: EnvironmentKey {
     static var defaultValue: CIContainer { CIContainer() }
     
-
-    lazy var networkHandler: NetworkHandler = {
-        NetworkHandler()
+    // MARK: - Core Services
+    
+    lazy var configuration: ConfigurationServiceProtocol = {
+        ConfigurationService.shared
     }()
     
-    func makeHomePageView() -> HopePageView<HomePageViewModel> {
-        return HopePageView(vm: HomePageViewModel(networkHandler: networkHandler))
-    }
+    lazy var loggerFactory: LoggerFactory = {
+        LoggerFactory.shared
+    }()
     
-//    func makeContentView() -> ContentView<ContentViewModel> {
-//        return ContentView(viewModel: ContentViewModel(authService: authService))
-//    }
-//    
-//    func makeHomePageView() -> HomePageView<HomePageViewModel> {
-//        return HomePageView(viewModel: ContentViewModel(authService: authService))
-//    }
+    // MARK: - Network Layer
+    
+    lazy var networkHandler: NetworkHandlerProtocol = {
+        NetworkHandler(
+            logger: loggerFactory.logger(for: "Network"),
+            urlSession: .shared
+        )
+    }()
+    
+    // MARK: - Services
+    
+    lazy var carService: any CarServiceType = {
+        CarService(
+            networkHandler: networkHandler,
+            logger: loggerFactory.logger(for: "CarService")
+        )
+    }()
+    
+    lazy var modelDownloader: ModelDownloaderProtocol = {
+        ModelDownloader(
+            configuration: configuration,
+            fileManager: .default,
+            urlSession: .shared,
+            logger: loggerFactory.logger(for: "ModelDownloader")
+        )
+    }()
+    
+    // MARK: - View Factories
+    
+    func makeHomePageView() -> HopePageView<HomePageViewModel> {
+        let viewModel = HomePageViewModel(
+            carService: carService,
+            logger: loggerFactory.logger(for: "HomePageViewModel")
+        )
+        return HopePageView(vm: viewModel)
+    }
 }
 
 

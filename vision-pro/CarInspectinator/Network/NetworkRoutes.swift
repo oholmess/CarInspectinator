@@ -2,25 +2,24 @@
 //  NetworkRoutes.swift
 //  CarInspectinator
 //
-//  Created by Oliver Holmes on 10/3/25.
+//  Refactored to use ConfigurationService for base URL
 //
-
 
 import Foundation
 
 enum NetworkRoutes {
-    private static let baseUrl = "https://car-service-469466026461.europe-west1.run.app"
-    
     case getCar(carId: String)
     case getCars
     
     var url: URL? {
-        var path: String
+        let baseUrl = ConfigurationService.shared.baseURL
+        let path: String
+        
         switch self {
         case .getCar(let carId):
-            path = NetworkRoutes.baseUrl + "/v1/cars/\(carId)"
+            path = "\(baseUrl)/v1/cars/\(carId)"
         case .getCars:
-            path = NetworkRoutes.baseUrl + "/v1/cars"
+            path = "\(baseUrl)/v1/cars"
         }
         
         return URL(string: path)
@@ -32,5 +31,4 @@ enum NetworkRoutes {
             return .get
         }
     }
-    
 }

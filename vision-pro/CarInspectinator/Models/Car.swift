@@ -219,18 +219,8 @@ extension Engine: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // Decode simple measurement format {value, unit}
-        if let displacementDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .displacement) {
-            if let value = displacementDict["value"]?.doubleValue,
-               let unitString = displacementDict["unit"]?.stringValue {
-                let unit: UnitVolume = unitString == "gallons" ? .gallons : .liters
-                displacement = Measurement(value: value, unit: unit)
-            } else {
-                displacement = nil
-            }
-        } else {
-            displacement = nil
-        }
+        let displacementDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .displacement)
+        displacement = MeasurementCodec.decode(displacementDict, mapper: VolumeUnitMapper.self)
         
         cylinders = try container.decodeIfPresent(Int.self, forKey: .cylinders)
         configuration = try container.decodeIfPresent(String.self, forKey: .configuration)
@@ -242,11 +232,7 @@ extension Engine: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
-        if let displacement = displacement {
-            let dict: [String: Any] = [
-                "value": displacement.value,
-                "unit": displacement.unit == .gallons ? "gallons" : "liters"
-            ]
+        if let dict = MeasurementCodec.encode(displacement, mapper: VolumeUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .displacement)
         }
         
@@ -286,110 +272,61 @@ extension Performance: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // Horsepower
-        if let hpDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .horsepower),
-           let value = hpDict["value"]?.doubleValue,
-           let unitString = hpDict["unit"]?.stringValue {
-            let unit: UnitPower = unitString == "kilowatts" ? .kilowatts : .horsepower
-            horsepower = Measurement(value: value, unit: unit)
-        } else {
-            horsepower = nil
-        }
+        horsepower = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .horsepower),
+            mapper: PowerUnitMapper.self
+        )
         
-        // Torque
-        if let torqueDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .torque),
-           let value = torqueDict["value"]?.doubleValue,
-           let unitString = torqueDict["unit"]?.stringValue {
-            let unit: UnitTorque = unitString == "newtonMeters" ? .newtonMeters : .poundForceFeet
-            torque = Measurement(value: value, unit: unit)
-        } else {
-            torque = nil
-        }
+        torque = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .torque),
+            mapper: TorqueUnitMapper.self
+        )
         
-        // Zero to sixty
-        if let zeroDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .zeroToSixty),
-           let value = zeroDict["value"]?.doubleValue {
-            zeroToSixty = Measurement(value: value, unit: .seconds)
-        } else {
-            zeroToSixty = nil
-        }
+        zeroToSixty = MeasurementCodec.decodeFixedUnit(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .zeroToSixty),
+            unit: .seconds
+        )
         
-        // Top speed
-        if let speedDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .topSpeed),
-           let value = speedDict["value"]?.doubleValue,
-           let unitString = speedDict["unit"]?.stringValue {
-            let unit: UnitSpeed = unitString == "milesPerHour" ? .milesPerHour : .kilometersPerHour
-            topSpeed = Measurement(value: value, unit: unit)
-        } else {
-            topSpeed = nil
-        }
+        topSpeed = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .topSpeed),
+            mapper: SpeedUnitMapper.self
+        )
         
-        // EPA City
-        if let cityDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .epaCity),
-           let value = cityDict["value"]?.doubleValue,
-           let unitString = cityDict["unit"]?.stringValue {
-            let unit: UnitFuelEfficiency = unitString == "litersPer100km" ? .litersPer100Kilometers : .milesPerGallon
-            epaCity = Measurement(value: value, unit: unit)
-        } else {
-            epaCity = nil
-        }
+        epaCity = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .epaCity),
+            mapper: FuelEfficiencyUnitMapper.self
+        )
         
-        // EPA Highway
-        if let hwDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .epaHighway),
-           let value = hwDict["value"]?.doubleValue,
-           let unitString = hwDict["unit"]?.stringValue {
-            let unit: UnitFuelEfficiency = unitString == "litersPer100km" ? .litersPer100Kilometers : .milesPerGallon
-            epaHighway = Measurement(value: value, unit: unit)
-        } else {
-            epaHighway = nil
-        }
+        epaHighway = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .epaHighway),
+            mapper: FuelEfficiencyUnitMapper.self
+        )
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
-        if let hp = horsepower {
-            let dict: [String: Any] = [
-                "value": hp.value,
-                "unit": hp.unit == .kilowatts ? "kilowatts" : "horsepower"
-            ]
+        if let dict = MeasurementCodec.encode(horsepower, mapper: PowerUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .horsepower)
         }
         
-        if let tq = torque {
-            let dict: [String: Any] = [
-                "value": tq.value,
-                "unit": tq.unit == .newtonMeters ? "newtonMeters" : "poundForceFeet"
-            ]
+        if let dict = MeasurementCodec.encode(torque, mapper: TorqueUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .torque)
         }
         
-        if let zero = zeroToSixty {
-            let dict: [String: Any] = ["value": zero.value, "unit": "seconds"]
+        if let dict = MeasurementCodec.encodeFixedUnit(zeroToSixty, unitString: "seconds") {
             try container.encode(AnyCodableDict(dict), forKey: .zeroToSixty)
         }
         
-        if let speed = topSpeed {
-            let dict: [String: Any] = [
-                "value": speed.value,
-                "unit": speed.unit == .milesPerHour ? "milesPerHour" : "kilometersPerHour"
-            ]
+        if let dict = MeasurementCodec.encode(topSpeed, mapper: SpeedUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .topSpeed)
         }
         
-        if let city = epaCity {
-            let dict: [String: Any] = [
-                "value": city.value,
-                "unit": city.unit == .litersPer100Kilometers ? "litersPer100km" : "milesPerGallon"
-            ]
+        if let dict = MeasurementCodec.encode(epaCity, mapper: FuelEfficiencyUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .epaCity)
         }
         
-        if let hwy = epaHighway {
-            let dict: [String: Any] = [
-                "value": hwy.value,
-                "unit": hwy.unit == .litersPer100Kilometers ? "litersPer100km" : "milesPerGallon"
-            ]
+        if let dict = MeasurementCodec.encode(epaHighway, mapper: FuelEfficiencyUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .epaHighway)
         }
     }
@@ -413,87 +350,72 @@ extension Dimensions: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // Helper to decode length measurements
-        func decodeLength(from dict: [String: AnyCodable]?) -> Measurement<UnitLength>? {
-            guard let dict = dict,
-                  let value = dict["value"]?.doubleValue,
-                  let unitString = dict["unit"]?.stringValue else { return nil }
-            let unit: UnitLength
-            switch unitString {
-            case "millimeters": unit = .millimeters
-            case "centimeters": unit = .centimeters
-            case "meters": unit = .meters
-            default: unit = .inches
-            }
-            return Measurement(value: value, unit: unit)
-        }
+        wheelbase = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .wheelbase),
+            mapper: LengthUnitMapper.self
+        )
         
-        wheelbase = decodeLength(from: try container.decodeIfPresent([String: AnyCodable].self, forKey: .wheelbase))
-        length = decodeLength(from: try container.decodeIfPresent([String: AnyCodable].self, forKey: .length))
-        width = decodeLength(from: try container.decodeIfPresent([String: AnyCodable].self, forKey: .width))
-        height = decodeLength(from: try container.decodeIfPresent([String: AnyCodable].self, forKey: .height))
+        length = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .length),
+            mapper: LengthUnitMapper.self
+        )
         
-        // Curb weight
-        if let weightDict = try container.decodeIfPresent([String: AnyCodable].self, forKey: .curbWeight),
-           let value = weightDict["value"]?.doubleValue,
-           let unitString = weightDict["unit"]?.stringValue {
-            let unit: UnitMass = unitString == "kilograms" ? .kilograms : .pounds
-            curbWeight = Measurement(value: value, unit: unit)
-        } else {
-            curbWeight = nil
-        }
+        width = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .width),
+            mapper: LengthUnitMapper.self
+        )
         
-        // Helper to decode volume measurements
-        func decodeVolume(from dict: [String: AnyCodable]?) -> Measurement<UnitVolume>? {
-            guard let dict = dict,
-                  let value = dict["value"]?.doubleValue,
-                  let unitString = dict["unit"]?.stringValue else { return nil }
-            let unit: UnitVolume = unitString == "gallons" ? .gallons : .liters
-            return Measurement(value: value, unit: unit)
-        }
+        height = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .height),
+            mapper: LengthUnitMapper.self
+        )
         
-        cargoRearSeatsUp = decodeVolume(from: try container.decodeIfPresent([String: AnyCodable].self, forKey: .cargoRearSeatsUp))
-        fuelTank = decodeVolume(from: try container.decodeIfPresent([String: AnyCodable].self, forKey: .fuelTank))
+        curbWeight = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .curbWeight),
+            mapper: MassUnitMapper.self
+        )
+        
+        cargoRearSeatsUp = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .cargoRearSeatsUp),
+            mapper: VolumeUnitMapper.self
+        )
+        
+        fuelTank = MeasurementCodec.decode(
+            try container.decodeIfPresent([String: AnyCodable].self, forKey: .fuelTank),
+            mapper: VolumeUnitMapper.self
+        )
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
-        func encodeLength(_ measurement: Measurement<UnitLength>?, forKey key: CodingKeys) throws {
-            guard let measurement = measurement else { return }
-            let unitString: String
-            switch measurement.unit {
-            case .millimeters: unitString = "millimeters"
-            case .centimeters: unitString = "centimeters"
-            case .meters: unitString = "meters"
-            default: unitString = "inches"
-            }
-            let dict: [String: Any] = ["value": measurement.value, "unit": unitString]
-            try container.encode(AnyCodableDict(dict), forKey: key)
+        if let dict = MeasurementCodec.encode(wheelbase, mapper: LengthUnitMapper.self) {
+            try container.encode(AnyCodableDict(dict), forKey: .wheelbase)
         }
         
-        try encodeLength(wheelbase, forKey: .wheelbase)
-        try encodeLength(length, forKey: .length)
-        try encodeLength(width, forKey: .width)
-        try encodeLength(height, forKey: .height)
+        if let dict = MeasurementCodec.encode(length, mapper: LengthUnitMapper.self) {
+            try container.encode(AnyCodableDict(dict), forKey: .length)
+        }
         
-        if let weight = curbWeight {
-            let dict: [String: Any] = [
-                "value": weight.value,
-                "unit": weight.unit == .kilograms ? "kilograms" : "pounds"
-            ]
+        if let dict = MeasurementCodec.encode(width, mapper: LengthUnitMapper.self) {
+            try container.encode(AnyCodableDict(dict), forKey: .width)
+        }
+        
+        if let dict = MeasurementCodec.encode(height, mapper: LengthUnitMapper.self) {
+            try container.encode(AnyCodableDict(dict), forKey: .height)
+        }
+        
+        if let dict = MeasurementCodec.encode(curbWeight, mapper: MassUnitMapper.self) {
             try container.encode(AnyCodableDict(dict), forKey: .curbWeight)
         }
         
-        func encodeVolume(_ measurement: Measurement<UnitVolume>?, forKey key: CodingKeys) throws {
-            guard let measurement = measurement else { return }
-            let unitString = measurement.unit == .gallons ? "gallons" : "liters"
-            let dict: [String: Any] = ["value": measurement.value, "unit": unitString]
-            try container.encode(AnyCodableDict(dict), forKey: key)
+        if let dict = MeasurementCodec.encode(cargoRearSeatsUp, mapper: VolumeUnitMapper.self) {
+            try container.encode(AnyCodableDict(dict), forKey: .cargoRearSeatsUp)
         }
         
-        try encodeVolume(cargoRearSeatsUp, forKey: .cargoRearSeatsUp)
-        try encodeVolume(fuelTank, forKey: .fuelTank)
+        if let dict = MeasurementCodec.encode(fuelTank, mapper: VolumeUnitMapper.self) {
+            try container.encode(AnyCodableDict(dict), forKey: .fuelTank)
+        }
     }
 }
 

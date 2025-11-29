@@ -2,68 +2,78 @@
 //  ModelDownloader.swift
 //  CarInspectinator
 //
-//  Service for downloading and caching 3D car models from GCS
+//  Refactored to follow Dependency Inversion and Single Responsibility principles
 //
 
 import Foundation
 import RealityKit
 
-/// Manages downloading and caching of 3D car models
+// MARK: - Protocol (Dependency Inversion)
+
+protocol ModelDownloaderProtocol {
+    var downloadProgress: [String: Double] { get }
+    func cacheURL(for volumeId: String) -> URL
+    func isCached(volumeId: String) -> Bool
+    func downloadModel(from urlString: String, volumeId: String) async throws -> URL?
+    func clearCache(for volumeId: String) throws
+    func clearAllCache() throws
+    func getCacheSize() -> Double
+}
+
+// MARK: - Implementation
+
 @Observable
-final class ModelDownloader {
-    /// Shared instance
-    static let shared = ModelDownloader()
-    
-    /// Cache directory for downloaded models
+final class ModelDownloader: ModelDownloaderProtocol {
     private let cacheDirectory: URL
+    private let fileManager: FileManager
+    private let urlSession: URLSession
+    private let logger: LoggerProtocol
     
-    /// Currently downloading model URLs
     private var activeDownloads: Set<String> = []
-    
-    /// Download progress for active downloads
     var downloadProgress: [String: Double] = [:]
     
-    private init() {
-        // Set up cache directory in app's cache folder
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        self.cacheDirectory = cacheDir.appendingPathComponent("CarModels", isDirectory: true)
+    init(
+        configuration: ConfigurationServiceProtocol = ConfigurationService.shared,
+        fileManager: FileManager = .default,
+        urlSession: URLSession = .shared,
+        logger: LoggerProtocol = LoggerFactory.shared.logger(for: "ModelDownloader")
+    ) {
+        self.cacheDirectory = configuration.cacheDirectory
+        self.fileManager = fileManager
+        self.urlSession = urlSession
+        self.logger = logger
         
         // Create cache directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
     }
     
-    /// Get the local cache path for a model
+    // MARK: - Public Methods
+    
     func cacheURL(for volumeId: String) -> URL {
-        return cacheDirectory.appendingPathComponent("\(volumeId).usdz")
+        cacheDirectory.appendingPathComponent("\(volumeId).usdz")
     }
     
-    /// Check if a model is cached locally
     func isCached(volumeId: String) -> Bool {
         let url = cacheURL(for: volumeId)
-        return FileManager.default.fileExists(atPath: url.path)
+        return fileManager.fileExists(atPath: url.path)
     }
     
-    /// Download a model from a URL and cache it locally
-    /// - Parameters:
-    ///   - url: The signed GCS URL to download from
-    ///   - volumeId: The volume ID to use for caching
-    /// - Returns: The local file URL if successful, nil otherwise
     func downloadModel(from urlString: String, volumeId: String) async throws -> URL? {
         // Check if already cached
         if isCached(volumeId: volumeId) {
-            print("Model '\(volumeId)' already cached")
+            logger.info("Model '\(volumeId)' already cached", file: #file, function: #function, line: #line)
             return cacheURL(for: volumeId)
         }
         
         // Check if already downloading
         guard !activeDownloads.contains(volumeId) else {
-            print("Model '\(volumeId)' is already being downloaded")
+            logger.warning("Model '\(volumeId)' is already being downloaded", file: #file, function: #function, line: #line)
             return nil
         }
         
         guard let url = URL(string: urlString) else {
-            print("Invalid URL: \(urlString)")
-            return nil
+            logger.error("Invalid URL: \(urlString)", file: #file, function: #function, line: #line)
+            throw NetworkError.userError("Invalid URL")
         }
         
         activeDownloads.insert(volumeId)
@@ -74,54 +84,52 @@ final class ModelDownloader {
         }
         
         do {
-            print("Downloading model '\(volumeId)' from GCS...")
+            logger.info("Downloading model '\(volumeId)' from GCS", file: #file, function: #function, line: #line)
             
-            // Download the file
-            let (tempURL, response) = try await URLSession.shared.download(from: url)
+            let (tempURL, response) = try await urlSession.download(from: url)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
-                print("Failed to download model: Invalid response")
-                return nil
+                logger.error("Failed to download model: Invalid response", file: #file, function: #function, line: #line)
+                throw NetworkError.noResponse
             }
             
-            // Move to cache directory
             let destinationURL = cacheURL(for: volumeId)
             
             // Remove existing file if present
-            try? FileManager.default.removeItem(at: destinationURL)
+            try? fileManager.removeItem(at: destinationURL)
             
             // Move downloaded file to cache
-            try FileManager.default.moveItem(at: tempURL, to: destinationURL)
+            try fileManager.moveItem(at: tempURL, to: destinationURL)
             
-            print("✅ Model '\(volumeId)' downloaded and cached")
+            logger.info("✅ Model '\(volumeId)' downloaded and cached", file: #file, function: #function, line: #line)
             downloadProgress[volumeId] = 1.0
             
             return destinationURL
             
         } catch {
-            print("Error downloading model '\(volumeId)': \(error)")
+            logger.error("Error downloading model '\(volumeId)': \(error.localizedDescription)", file: #file, function: #function, line: #line)
             throw error
         }
     }
     
-    /// Clear cached model
-    func clearCache(for volumeId: String) {
+    func clearCache(for volumeId: String) throws {
         let url = cacheURL(for: volumeId)
-        try? FileManager.default.removeItem(at: url)
-        print("Cleared cache for model '\(volumeId)'")
+        try fileManager.removeItem(at: url)
+        logger.info("Cleared cache for model '\(volumeId)'", file: #file, function: #function, line: #line)
     }
     
-    /// Clear all cached models
-    func clearAllCache() {
-        try? FileManager.default.removeItem(at: cacheDirectory)
-        try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
-        print("Cleared all cached models")
+    func clearAllCache() throws {
+        try fileManager.removeItem(at: cacheDirectory)
+        try fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        logger.info("Cleared all cached models", file: #file, function: #function, line: #line)
     }
     
-    /// Get the size of cached models in MB
     func getCacheSize() -> Double {
-        guard let files = try? FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: [.fileSizeKey]) else {
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: cacheDirectory,
+            includingPropertiesForKeys: [.fileSizeKey]
+        ) else {
             return 0
         }
         

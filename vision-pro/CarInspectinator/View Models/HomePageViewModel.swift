@@ -2,7 +2,7 @@
 //  HomePageViewModel.swift
 //  CarInspectinator
 //
-//  Created by Oliver Holmes on 10/3/25.
+//  Refactored to use CarService and follow SOLID principles
 //
 
 import Foundation
@@ -21,41 +21,42 @@ class HomePageViewModel: HomePageViewModelType {
     @Published var isLoading: Bool = false
     @Published var error: Error?
     
-    private let networkHandler: NetworkHandler
+    private let carService: any CarServiceType
+    private let logger: LoggerProtocol
     
-    init(networkHandler: NetworkHandler) {
-        self.networkHandler = networkHandler
+    init(
+        carService: any CarServiceType,
+        logger: LoggerProtocol = LoggerFactory.shared.logger(for: "HomePageViewModel")
+    ) {
+        self.carService = carService
+        self.logger = logger
     }
     
     func getCars() async throws {
-        await MainActor.run { isLoading = true }
+        setLoading(true)
+        
         do {
-            let route = NetworkRoutes.getCars
-            let method = route.method
-            guard let url = route.url else {
-                print("Failed to create/find URL")
-                throw ConfigurationError.nilObject
-            }
-            
-            let cars = try await networkHandler.request(
-                url,
-                responseType: [Car].self,
-                httpMethod: method.rawValue
-            )
-            
-            print("DEBUG: cars: \(cars)")
+            let cars = try await carService.getCars()
+            logger.info("Successfully loaded \(cars.count) cars", file: #file, function: #function, line: #line)
             
             await MainActor.run {
                 self.cars = cars
-                isLoading = false
+                self.isLoading = false
             }
         } catch {
-            print("Failed to get cars: \(error)")
+            logger.error("Failed to get cars: \(error.localizedDescription)", file: #file, function: #function, line: #line)
             await MainActor.run {
                 self.error = error
-                isLoading = false
+                self.isLoading = false
             }
+            throw error
         }
     }
     
+    // MARK: - Private Helpers
+    
+    @MainActor
+    private func setLoading(_ loading: Bool) {
+        isLoading = loading
+    }
 }

@@ -33,16 +33,13 @@ jobs:
     - name: Run tests with coverage
       working-directory: vision-pro
       run: |
-        # List all visionOS simulators for debugging
-        echo "=== All visionOS simulators ==="
-        xcrun simctl list devices available | grep -i "vision" || echo "None found"
-        echo ""
-        
-        # Get the first available visionOS simulator ID (any version)
-        SIMULATOR_ID=$(xcrun simctl list devices available | grep -i "Apple Vision Pro" | head -1 | sed -E 's/.*\(([A-Fa-f0-9-]+),.*/\1/')
+        # Use the visionOS 26.1 simulator ID directly from available destinations
+        # Format: Apple Vision Pro (UUID) (Status)
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep -E "visionOS 26" -A1 | grep "Apple Vision Pro" | head -1 | sed -E 's/.*\(([A-Fa-f0-9-]{36})\).*/\1/')
         
         if [ -z "$SIMULATOR_ID" ]; then
-          echo "ERROR: Could not find visionOS simulator"
+          echo "ERROR: Could not find visionOS 26.x simulator"
+          echo "Available simulators:"
           xcrun simctl list devices available
           exit 1
         fi

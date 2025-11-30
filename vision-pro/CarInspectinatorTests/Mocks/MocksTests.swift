@@ -224,7 +224,7 @@ final class MockCarServiceTests: XCTestCase {
     
     func testGetCars_ReturnsMockCars() async throws {
         // Given
-        sut.mockCars = [createMockCar(id: "1"), createMockCar(id: "2")]
+        sut.mockCars = [createMockCar(), createMockCar()]
         
         // When
         let cars = try await sut.getCars()
@@ -257,7 +257,7 @@ final class MockCarServiceTests: XCTestCase {
     
     func testGetCar_ReturnsMockCar() async throws {
         // Given
-        let mockCar = createMockCar(id: "test-123")
+        let mockCar = createMockCar()
         sut.mockCar = mockCar
         
         // When
@@ -269,7 +269,7 @@ final class MockCarServiceTests: XCTestCase {
     
     func testGetCar_TracksLastCarIdRequested() async throws {
         // Given
-        sut.mockCar = createMockCar(id: "car-456")
+        sut.mockCar = createMockCar()
         
         // When
         _ = try await sut.getCar("car-456")
@@ -280,7 +280,7 @@ final class MockCarServiceTests: XCTestCase {
     
     func testGetCar_IncrementsCallCount() async throws {
         // Given
-        sut.mockCar = createMockCar(id: "test")
+        sut.mockCar = createMockCar()
         
         // When
         _ = try await sut.getCar("test")
@@ -291,8 +291,8 @@ final class MockCarServiceTests: XCTestCase {
     
     func testReset_ClearsAllState() async throws {
         // Given
-        sut.mockCars = [createMockCar(id: "1")]
-        sut.mockCar = createMockCar(id: "2")
+        sut.mockCars = [createMockCar()]
+        sut.mockCar = createMockCar()
         sut.shouldThrowError = true
         _ = try? await sut.getCars()
         
@@ -310,15 +310,15 @@ final class MockCarServiceTests: XCTestCase {
     
     // MARK: - Helpers
     
-    private func createMockCar(id: String) -> Car {
+    private func createMockCar() -> Car {
         return Car(
-            id: id,
+            id: UUID(),
             make: "TestMake",
             model: "TestModel",
             blurb: "Test",
             iconAssetName: "icon",
             year: 2024,
-            bodyStyle: "Sedan",
+            bodyStyle: .sedan,
             exteriorColor: "Blue",
             interiorColor: "Black",
             interiorPanoramaAssetName: nil,
@@ -328,7 +328,7 @@ final class MockCarServiceTests: XCTestCase {
             performance: nil,
             dimensions: nil,
             drivetrain: nil,
-            otherSpecs: nil
+            otherSpecs: [:]
         )
     }
 }
@@ -476,4 +476,3 @@ final class MockConfigurationServiceTests: XCTestCase {
         XCTAssertNotNil(cacheDir)
     }
 }
-

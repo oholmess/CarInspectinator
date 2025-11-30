@@ -87,7 +87,6 @@ final class AppModelTests: XCTestCase {
         // Given
         let car = createMockCarWithPanorama()
         sut.selectCar(car)
-        let originalPanorama = sut.panoramaImageName
         sut.resetSelection()
         
         // Then - panorama should be reset to default or nil
@@ -99,13 +98,13 @@ final class AppModelTests: XCTestCase {
     
     private func createMockCar() -> Car {
         return Car(
-            id: "test-car",
+            id: UUID(),
             make: "TestMake",
             model: "TestModel",
             blurb: "Test description",
             iconAssetName: "test_icon",
             year: 2024,
-            bodyStyle: "Sedan",
+            bodyStyle: .sedan,
             exteriorColor: "Blue",
             interiorColor: "Black",
             interiorPanoramaAssetName: nil,
@@ -115,19 +114,19 @@ final class AppModelTests: XCTestCase {
             performance: nil,
             dimensions: nil,
             drivetrain: nil,
-            otherSpecs: nil
+            otherSpecs: [:]
         )
     }
     
     private func createMockCarWithPanorama() -> Car {
         return Car(
-            id: "test-car",
+            id: UUID(),
             make: "TestMake",
             model: "TestModel",
             blurb: "Test description",
             iconAssetName: "test_icon",
             year: 2024,
-            bodyStyle: "Sedan",
+            bodyStyle: .sedan,
             exteriorColor: "Blue",
             interiorColor: "Black",
             interiorPanoramaAssetName: "test_panorama",
@@ -137,8 +136,7 @@ final class AppModelTests: XCTestCase {
             performance: nil,
             dimensions: nil,
             drivetrain: nil,
-            otherSpecs: nil
+            otherSpecs: [:]
         )
     }
 }
-

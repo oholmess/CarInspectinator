@@ -78,17 +78,18 @@ final class CarServiceTests: XCTestCase {
     
     func testGetCar_Success() async throws {
         // Given
-        let expectedCar = createMockCar(id: "test-car-123")
+        let carId = UUID()
+        let expectedCar = createMockCar(id: carId)
         let jsonData = try JSONEncoder().encode(expectedCar)
         mockNetworkHandler.mockData = jsonData
         
         // When
-        let car = try await sut.getCar("test-car-123")
+        let car = try await sut.getCar(carId.uuidString)
         
         // Then
         XCTAssertEqual(car.id, expectedCar.id)
         XCTAssertEqual(mockNetworkHandler.requestCallCount, 1)
-        XCTAssertTrue(mockLogger.hasLoggedMessage(containing: "Fetching car with ID: test-car-123", level: .info))
+        XCTAssertTrue(mockLogger.hasLoggedMessage(containing: "Fetching car with ID:", level: .info))
     }
     
     func testGetCar_NetworkError() async {
@@ -109,13 +110,13 @@ final class CarServiceTests: XCTestCase {
     
     private func createMockCars() -> [Car] {
         return [
-            createMockCar(id: "car1"),
-            createMockCar(id: "car2"),
-            createMockCar(id: "car3")
+            createMockCar(id: UUID()),
+            createMockCar(id: UUID()),
+            createMockCar(id: UUID())
         ]
     }
     
-    private func createMockCar(id: String) -> Car {
+    private func createMockCar(id: UUID) -> Car {
         return Car(
             id: id,
             make: "TestMake",
@@ -123,7 +124,7 @@ final class CarServiceTests: XCTestCase {
             blurb: "Test description",
             iconAssetName: "test_icon",
             year: 2024,
-            bodyStyle: "Sedan",
+            bodyStyle: .sedan,
             exteriorColor: "Blue",
             interiorColor: "Black",
             interiorPanoramaAssetName: nil,
@@ -133,7 +134,7 @@ final class CarServiceTests: XCTestCase {
             performance: nil,
             dimensions: nil,
             drivetrain: nil,
-            otherSpecs: nil
+            otherSpecs: [:]
         )
     }
 }

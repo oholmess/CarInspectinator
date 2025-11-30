@@ -49,8 +49,8 @@ final class CarServiceIntegrationTests: XCTestCase {
             return
         }
         
-        // When
-        let car = try await sut.getCar(firstCar.id)
+        // When - Convert UUID to String for the API call
+        let car = try await sut.getCar(firstCar.id.uuidString)
         
         // Then
         XCTAssertEqual(car.id, firstCar.id)

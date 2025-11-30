@@ -61,24 +61,13 @@ final class CIContainerTests: XCTestCase {
         XCTAssertNotNil(service)
     }
     
-    // MARK: - makeHomePageView Tests
-    
-    func testMakeHomePageView_ReturnsView() {
-        // When
-        let view = sut.makeHomePageView()
-        
-        // Then
-        XCTAssertNotNil(view)
-    }
-    
     // MARK: - Default Value Tests
     
     func testDefaultValue_ReturnsContainer() {
         // When
-        let defaultContainer = CIContainerKey.defaultValue
+        let defaultContainer = CIContainer.defaultValue
         
         // Then
         XCTAssertNotNil(defaultContainer)
     }
 }
-

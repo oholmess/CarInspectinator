@@ -188,21 +188,21 @@ final class HomePageViewModelTests: XCTestCase {
     
     private func createMockCars() -> [Car] {
         return [
-            createMockCar(id: "car1"),
-            createMockCar(id: "car2"),
-            createMockCar(id: "car3")
+            createMockCar(),
+            createMockCar(),
+            createMockCar()
         ]
     }
     
-    private func createMockCar(id: String) -> Car {
+    private func createMockCar() -> Car {
         return Car(
-            id: id,
+            id: UUID(),
             make: "TestMake",
             model: "TestModel",
             blurb: "Test description",
             iconAssetName: "test_icon",
             year: 2024,
-            bodyStyle: "Sedan",
+            bodyStyle: .sedan,
             exteriorColor: "Blue",
             interiorColor: "Black",
             interiorPanoramaAssetName: nil,
@@ -212,7 +212,7 @@ final class HomePageViewModelTests: XCTestCase {
             performance: nil,
             dimensions: nil,
             drivetrain: nil,
-            otherSpecs: nil
+            otherSpecs: [:]
         )
     }
 }

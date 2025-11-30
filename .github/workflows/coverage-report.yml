@@ -61,17 +61,22 @@ jobs:
         echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
         echo "Code Coverage: ${COVERAGE}%"
     
-    - name: Create coverage badge
-      uses: schneegans/dynamic-badges-action@v1.7.0
-      with:
-        auth: ${{ secrets.GIST_SECRET }}
-        gistID: YOUR_GIST_ID_HERE
-        filename: coverage-badge.json
-        label: Coverage
-        message: ${{ steps.coverage.outputs.coverage }}%
-        valColorRange: ${{ steps.coverage.outputs.coverage }}
-        maxColorRange: 100
-        minColorRange: 0
+    # Uncomment and configure the following step to enable coverage badges:
+    # 1. Create a GitHub gist at https://gist.github.com
+    # 2. Add GIST_SECRET to repository secrets (Settings > Secrets > Actions)
+    # 3. Replace YOUR_GIST_ID_HERE with your actual gist ID
+    # - name: Create coverage badge
+    #   if: ${{ secrets.GIST_SECRET != '' }}
+    #   uses: schneegans/dynamic-badges-action@v1.7.0
+    #   with:
+    #     auth: ${{ secrets.GIST_SECRET }}
+    #     gistID: YOUR_GIST_ID_HERE
+    #     filename: coverage-badge.json
+    #     label: Coverage
+    #     message: ${{ steps.coverage.outputs.coverage }}%
+    #     valColorRange: ${{ steps.coverage.outputs.coverage }}
+    #     maxColorRange: 100
+    #     minColorRange: 0
     
     - name: Generate detailed coverage report
       working-directory: vision-pro

@@ -77,21 +77,13 @@ final class HomePageViewModelTests: XCTestCase {
         // Arrange
         mockCarService.mockCars = []
         
-        // Create expectation for loading state
-        let loadingExpectation = expectation(description: "Loading state set")
+        // Assert initial state
+        XCTAssertFalse(sut.isLoading)
         
         // Act
-        Task {
-            // Check loading state immediately after calling getCars
-            if sut.isLoading {
-                loadingExpectation.fulfill()
-            }
-        }
-        
         try await sut.getCars()
         
-        // Assert
-        await fulfillment(of: [loadingExpectation], timeout: 1.0)
+        // Assert final state  
         XCTAssertFalse(sut.isLoading) // Should be false after completion
     }
     

@@ -104,10 +104,10 @@ class NetworkHandler: NetworkHandlerProtocol {
         
         do {
             let decoded = try JSONDecoder().decode(responseType, from: data)
-            logger.debug("Successfully decoded response of type \(ResponseType.self)", file: #file, function: #function, line: #line)
+            await logger.debug("Successfully decoded response of type \(ResponseType.self)", file: #file, function: #function, line: #line)
             return decoded
         } catch {
-            logger.error("Failed to decode response: \(error.localizedDescription)", file: #file, function: #function, line: #line)
+            await logger.error("Failed to decode response: \(error.localizedDescription)", file: #file, function: #function, line: #line)
             throw NetworkError.decodingError
         }
     }

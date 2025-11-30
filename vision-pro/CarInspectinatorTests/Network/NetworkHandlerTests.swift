@@ -26,26 +26,8 @@ final class NetworkHandlerTests: XCTestCase {
         super.tearDown()
     }
     
-    // MARK: - Initialization Tests
-    
-    func testInit_CreatesNetworkHandler() {
-        // Given/When - use mock logger to avoid Bundle.main issues
-        let handler = NetworkHandler(logger: MockLogger())
-        
-        // Then
-        XCTAssertNotNil(handler)
-    }
-    
-    func testInit_WithCustomLogger() {
-        // Given/When
-        let customLogger = MockLogger()
-        let handler = NetworkHandler(logger: customLogger)
-        
-        // Then
-        XCTAssertNotNil(handler)
-    }
-    
     // MARK: - URL Request Creation Tests
+    // Note: NetworkHandler initialization is tested implicitly through setUp()
     
     func testRequest_InvalidURL_ThrowsError() async {
         // Given

@@ -115,7 +115,9 @@ final class ModelDownloaderTests: XCTestCase {
             _ = try await sut.downloadModel(from: invalidURL, volumeId: volumeId)
             XCTFail("Expected error to be thrown")
         } catch {
-            XCTAssertTrue(mockLogger.hasLoggedMessage(containing: "Invalid URL", level: .error))
+            // Check that error was logged (actual message is "Invalid URL: {url}")
+            XCTAssertTrue(mockLogger.messageCount(for: .error) > 0)
+            XCTAssertTrue(mockLogger.hasLoggedMessage(containing: "Invalid URL:", level: .error))
         }
     }
     

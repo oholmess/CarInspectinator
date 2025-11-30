@@ -61,7 +61,7 @@ final class NetworkHandlerTests: XCTestCase {
         
         // Act & Assert
         do {
-            _ = try await sut.request(testURL)
+            let _ = try await sut.request(testURL)
             XCTFail("Expected error to be thrown")
         } catch let error as NetworkError {
             if case .failedStatusCodeResponseData(let code, _) = error {
@@ -69,6 +69,8 @@ final class NetworkHandlerTests: XCTestCase {
             } else {
                 XCTFail("Wrong error type")
             }
+        } catch {
+            XCTFail("Unexpected error in: \((#function))")
         }
     }
     
@@ -159,9 +161,8 @@ final class NetworkHandlerTests: XCTestCase {
     func testRequestWithInvalidJSONDictionaryThrowsError() async {
         // Arrange
         let testURL = URL(string: "https://test.com/api")!
-        // Create an object that can't be serialized to JSON
-        class NonSerializable {}
-        let jsonDict: [String: Any] = ["object": NonSerializable()]
+        // Create a dictionary with invalid JSON data (NaN is not valid in JSON)
+        let jsonDict: [String: Any] = ["number": Double.nan]
         
         // Act & Assert
         do {

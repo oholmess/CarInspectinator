@@ -41,6 +41,7 @@ class HomePageViewModel: HomePageViewModelType {
             
             await MainActor.run {
                 self.cars = cars
+                self.error = nil  // Clear any previous errors on success
                 self.isLoading = false
             }
         } catch {

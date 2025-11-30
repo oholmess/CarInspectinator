@@ -25,7 +25,7 @@ jobs:
         xcodebuild test \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=Apple Vision Pro,OS=latest' \
+          -destination 'platform=visionOS Simulator,name=Apple Vision Pro,OS=26.1' \
           -enableCodeCoverage YES \
           -derivedDataPath DerivedData
     

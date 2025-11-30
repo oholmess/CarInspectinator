@@ -62,8 +62,20 @@ jobs:
     - name: Run tests
       working-directory: vision-pro
       run: |
-        # Get the first available visionOS 26.1 simulator ID
-        SIMULATOR_ID=$(xcrun simctl list devices available | grep "Apple Vision Pro.*26.1" | head -1 | grep -oE '[A-F0-9-]{36}')
+        # List all visionOS simulators for debugging
+        echo "=== All visionOS simulators ==="
+        xcrun simctl list devices available | grep -i "vision" || echo "None found"
+        echo ""
+        
+        # Get the first available visionOS simulator ID (any version)
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep -i "Apple Vision Pro" | head -1 | sed -E 's/.*\(([A-Fa-f0-9-]+),.*/\1/')
+        
+        if [ -z "$SIMULATOR_ID" ]; then
+          echo "ERROR: Could not find visionOS simulator"
+          xcrun simctl list devices available
+          exit 1
+        fi
+        
         echo "Using simulator ID: $SIMULATOR_ID"
         xcodebuild test-without-building \
           -project CarInspectinator.xcodeproj \

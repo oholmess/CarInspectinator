@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/master.swiftdeps"
+  },
+  "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/Sources/RealityKitContent/RealityKitContent.swift": {
+    "dependencies": "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/RealityKitContent.d",
+    "object": "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/RealityKitContent.swift.o",
+    "swiftmodule": "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/RealityKitContent~partial.swiftmodule",
+    "swift-dependencies": "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/RealityKitContent.swiftdeps",
+    "diagnostics": "/Users/oliverholmes/Documents/Coding_Projects/CarInspectinator/vision-pro/Packages/RealityKitContent/.build/index-build/arm64-apple-macosx/debug/RealityKitContent.build/RealityKitContent.dia"
+  }
+}

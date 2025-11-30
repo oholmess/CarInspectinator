@@ -8,14 +8,14 @@ on:
   workflow_dispatch:
 
 env:
-  XCODE_VERSION: '16.2'
+  XCODE_VERSION: 'latest-stable'
   IOS_SIMULATOR: 'iPhone 15 Pro'
   VISIONOS_SIMULATOR: 'Apple Vision Pro'
 
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: macos-15
+    runs-on: macos-latest
     
     steps:
     - name: Checkout code
@@ -132,7 +132,7 @@ jobs:
 
   lint:
     name: Swift Lint
-    runs-on: macos-15
+    runs-on: macos-latest
     
     steps:
     - name: Checkout code

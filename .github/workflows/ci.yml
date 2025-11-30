@@ -8,14 +8,14 @@ on:
   workflow_dispatch:
 
 env:
-  XCODE_VERSION: 'latest-stable'
-  IOS_SIMULATOR: 'iPhone 15 Pro'
+  XCODE_VERSION: '26.1'
+  IOS_SIMULATOR: 'iPhone 16 Pro'
   VISIONOS_SIMULATOR: 'Apple Vision Pro'
 
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: macos-latest
+    runs-on: macos-15
     
     steps:
     - name: Checkout code
@@ -33,7 +33,7 @@ jobs:
       run: xcrun simctl list devices available
     
     - name: Cache derived data
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/Library/Developer/Xcode/DerivedData
         key: ${{ runner.os }}-derived-data-${{ hashFiles('**/*.xcodeproj') }}
@@ -46,7 +46,7 @@ jobs:
         xcodebuild build-for-testing \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=26.1' \
+          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }}' \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           | xcpretty && exit ${PIPESTATUS[0]}
@@ -57,7 +57,7 @@ jobs:
         xcodebuild test-without-building \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=26.1' \
+          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }}' \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults \
@@ -132,7 +132,7 @@ jobs:
 
   lint:
     name: Swift Lint
-    runs-on: macos-latest
+    runs-on: macos-15
     
     steps:
     - name: Checkout code
@@ -165,6 +165,6 @@ jobs:
         xcodebuild build \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=26.1' \
+          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }}' \
           | xcpretty && exit ${PIPESTATUS[0]}
 

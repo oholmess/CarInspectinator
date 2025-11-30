@@ -80,25 +80,25 @@ jobs:
           -destination "platform=visionOS Simulator,id=$SIMULATOR_ID" \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
-          -resultBundlePath TestResults \
+          -resultBundlePath TestResults.xcresult \
           | xcpretty && exit ${PIPESTATUS[0]}
     
     - name: Generate code coverage report
       working-directory: vision-pro
       run: |
-        # TestResults is the .xcresult bundle itself (directory bundle)
-        if [ ! -d "TestResults" ]; then
-          echo "ERROR: TestResults directory does not exist"
+        # TestResults.xcresult is the result bundle
+        if [ ! -d "TestResults.xcresult" ]; then
+          echo "ERROR: TestResults.xcresult directory does not exist"
           exit 1
         fi
-        echo "Using result bundle: TestResults"
-        xcrun xccov view --report --json TestResults > coverage.json
-        xcrun xccov view --report TestResults > coverage.txt
+        echo "Using result bundle: TestResults.xcresult"
+        xcrun xccov view --report --json TestResults.xcresult > coverage.json
+        xcrun xccov view --report TestResults.xcresult > coverage.txt
     
     - name: Check code coverage
       working-directory: vision-pro
       run: |
-        COVERAGE=$(xcrun xccov view --report --json TestResults | \
+        COVERAGE=$(xcrun xccov view --report --json TestResults.xcresult | \
           python3 -c "import sys, json; data=json.load(sys.stdin); print(data['lineCoverage'])")
         echo "Code coverage: ${COVERAGE}%"
         
@@ -118,14 +118,14 @@ jobs:
         path: |
           vision-pro/coverage.json
           vision-pro/coverage.txt
-          vision-pro/TestResults/
+          vision-pro/TestResults.xcresult/
     
     - name: Generate test report
       if: always()
       working-directory: vision-pro
       run: |
-        if [ -d "TestResults" ]; then
-          xcrun xcresulttool get --legacy --format json --path TestResults > test-report.json
+        if [ -d "TestResults.xcresult" ]; then
+          xcrun xcresulttool get --legacy --format json --path TestResults.xcresult > test-report.json
         fi
     
     - name: Upload test results
@@ -135,7 +135,7 @@ jobs:
         name: test-results
         path: |
           vision-pro/test-report.json
-          vision-pro/TestResults/
+          vision-pro/TestResults.xcresult/
     
     - name: Comment coverage on PR
       if: github.event_name == 'pull_request'

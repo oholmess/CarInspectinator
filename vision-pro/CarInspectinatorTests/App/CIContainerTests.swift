@@ -1,0 +1,84 @@
+//
+//  CIContainerTests.swift
+//  CarInspectinatorTests
+//
+//  Unit tests for CIContainer (Dependency Injection Container)
+//
+
+import XCTest
+@testable import CarInspectinator
+
+final class CIContainerTests: XCTestCase {
+    
+    var sut: CIContainer!
+    
+    override func setUp() {
+        super.setUp()
+        sut = CIContainer()
+    }
+    
+    override func tearDown() {
+        sut = nil
+        super.tearDown()
+    }
+    
+    // MARK: - loggerFactory Tests
+    
+    func testLoggerFactory_ReturnsLoggerFactory() {
+        // When
+        let factory = sut.loggerFactory
+        
+        // Then
+        XCTAssertNotNil(factory)
+    }
+    
+    func testLoggerFactory_ReturnsSameInstance() {
+        // When
+        let factory1 = sut.loggerFactory
+        let factory2 = sut.loggerFactory
+        
+        // Then
+        XCTAssertTrue(factory1 === factory2)
+    }
+    
+    // MARK: - networkHandler Tests
+    
+    func testNetworkHandler_ReturnsNetworkHandler() {
+        // When
+        let handler = sut.networkHandler
+        
+        // Then
+        XCTAssertNotNil(handler)
+    }
+    
+    // MARK: - carService Tests
+    
+    func testCarService_ReturnsCarService() {
+        // When
+        let service = sut.carService
+        
+        // Then
+        XCTAssertNotNil(service)
+    }
+    
+    // MARK: - makeHomePageView Tests
+    
+    func testMakeHomePageView_ReturnsView() {
+        // When
+        let view = sut.makeHomePageView()
+        
+        // Then
+        XCTAssertNotNil(view)
+    }
+    
+    // MARK: - Default Value Tests
+    
+    func testDefaultValue_ReturnsContainer() {
+        // When
+        let defaultContainer = CIContainerKey.defaultValue
+        
+        // Then
+        XCTAssertNotNil(defaultContainer)
+    }
+}
+

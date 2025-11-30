@@ -7,7 +7,7 @@ This document provides instructions for setting up and configuring the Continuou
 
 - GitHub repository
 - GitHub Actions enabled
-- Xcode 15.2+ installed (for local testing)
+- Xcode 16.0+ installed (for local testing)
 - visionOS SDK
 
 ## CI Pipeline Components
@@ -219,11 +219,13 @@ When a new Xcode version is released:
 1. Update `XCODE_VERSION` in workflow:
    ```yaml
    env:
-     XCODE_VERSION: '15.3'  # Update this
+     XCODE_VERSION: '16.0'  # Update this
    ```
 
 2. Test locally with new Xcode first
 3. Push and monitor CI
+
+**Note**: The project uses `objectVersion = 77` (Xcode 16 format), so Xcode 16.0+ is required.
 
 ## Coverage Trends
 

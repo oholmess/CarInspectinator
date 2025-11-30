@@ -32,15 +32,13 @@ jobs:
     - name: List available simulators
       run: xcrun simctl list devices available
     
-    - name: Create visionOS simulator if needed
+    - name: Check visionOS simulators
       run: |
-        # Check if Apple Vision Pro simulator with visionOS 26.1 exists
-        if ! xcrun simctl list devices | grep -q "Apple Vision Pro.*26.1"; then
-          echo "Creating Apple Vision Pro simulator..."
-          xcrun simctl create "Apple Vision Pro" "Apple Vision Pro" "com.apple.CoreSimulator.SimRuntime.xrOS-26-1" || true
-        fi
-        # List devices again to confirm
-        xcrun simctl list devices available | grep -i vision || true
+        echo "Available visionOS simulators:"
+        xcrun simctl list devices available | grep -i vision || echo "No visionOS simulators found"
+        echo ""
+        echo "First available visionOS 26.1 simulator:"
+        xcrun simctl list devices available | grep "Apple Vision Pro.*26.1" | head -1 || echo "None found"
     
     - name: Cache derived data
       uses: actions/cache@v4
@@ -56,7 +54,7 @@ jobs:
         xcodebuild build-for-testing \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=26.1' \
+          -destination 'generic/platform=visionOS Simulator' \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           | xcpretty && exit ${PIPESTATUS[0]}
@@ -64,10 +62,13 @@ jobs:
     - name: Run tests
       working-directory: vision-pro
       run: |
+        # Get the first available visionOS 26.1 simulator ID
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep "Apple Vision Pro.*26.1" | head -1 | grep -oE '[A-F0-9-]{36}')
+        echo "Using simulator ID: $SIMULATOR_ID"
         xcodebuild test-without-building \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=26.1' \
+          -destination "platform=visionOS Simulator,id=$SIMULATOR_ID" \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults \
@@ -175,6 +176,6 @@ jobs:
         xcodebuild build \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=26.1' \
+          -destination 'generic/platform=visionOS Simulator' \
           | xcpretty && exit ${PIPESTATUS[0]}
 

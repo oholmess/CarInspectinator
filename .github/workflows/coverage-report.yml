@@ -22,23 +22,24 @@ jobs:
     - name: List available simulators
       run: xcrun simctl list devices available
     
-    - name: Create visionOS simulator if needed
+    - name: Check visionOS simulators
       run: |
-        # Check if Apple Vision Pro simulator with visionOS 26.1 exists
-        if ! xcrun simctl list devices | grep -q "Apple Vision Pro.*26.1"; then
-          echo "Creating Apple Vision Pro simulator..."
-          xcrun simctl create "Apple Vision Pro" "Apple Vision Pro" "com.apple.CoreSimulator.SimRuntime.xrOS-26-1" || true
-        fi
-        # List devices again to confirm
-        xcrun simctl list devices available | grep -i vision || true
+        echo "Available visionOS simulators:"
+        xcrun simctl list devices available | grep -i vision || echo "No visionOS simulators found"
+        echo ""
+        echo "First available visionOS 26.1 simulator:"
+        xcrun simctl list devices available | grep "Apple Vision Pro.*26.1" | head -1 || echo "None found"
     
     - name: Run tests with coverage
       working-directory: vision-pro
       run: |
+        # Get the first available visionOS 26.1 simulator ID
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep "Apple Vision Pro.*26.1" | head -1 | grep -oE '[A-F0-9-]{36}')
+        echo "Using simulator ID: $SIMULATOR_ID"
         xcodebuild test \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=Apple Vision Pro,OS=26.1' \
+          -destination "platform=visionOS Simulator,id=$SIMULATOR_ID" \
           -enableCodeCoverage YES \
           -derivedDataPath DerivedData
     

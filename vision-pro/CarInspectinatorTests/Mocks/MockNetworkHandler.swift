@@ -41,7 +41,7 @@ final class MockNetworkHandler: NetworkHandlerProtocol {
         throw NetworkError.noResponse
     }
     
-    func request<ResponseType: Decodable>(
+    nonisolated func request<ResponseType: Decodable>(
         _ url: URL,
         jsonDictionary: Any? = nil,
         responseType: ResponseType.Type,

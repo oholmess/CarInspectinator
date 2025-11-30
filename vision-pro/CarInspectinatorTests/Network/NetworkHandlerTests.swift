@@ -170,6 +170,8 @@ final class NetworkHandlerTests: XCTestCase {
         } catch is NetworkError {
             // Expected
             XCTAssertTrue(mockLogger.hasLoggedMessage(containing: "Failed to serialize", level: .error))
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
         }
     }
 }

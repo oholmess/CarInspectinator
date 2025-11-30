@@ -6,9 +6,11 @@
 //
 
 import Foundation
+import Combine
 @testable import CarInspectinator
 
-final class MockCarService: CarServiceType {
+@MainActor
+final class MockCarService: CarServiceType, ObservableObject {
     // Configure mock behavior
     var mockCars: [Car] = []
     var mockCar: Car?

@@ -29,7 +29,7 @@ protocol NetworkHandlerProtocol {
         accessToken: String?
     ) async throws -> Data
     
-    func request<ResponseType: Decodable>(
+    nonisolated func request<ResponseType: Decodable>(
         _ url: URL,
         jsonDictionary: Any?,
         responseType: ResponseType.Type,
@@ -86,7 +86,7 @@ class NetworkHandler: NetworkHandlerProtocol {
         return data
     }
     
-    func request<ResponseType: Decodable>(
+    nonisolated func request<ResponseType: Decodable>(
         _ url: URL,
         jsonDictionary: Any? = nil,
         responseType: ResponseType.Type,

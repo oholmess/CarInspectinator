@@ -86,13 +86,21 @@ jobs:
     - name: Generate code coverage report
       working-directory: vision-pro
       run: |
-        xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult > coverage.json
-        xcrun xccov view --report DerivedData/Logs/Test/*.xcresult > coverage.txt
+        # Find the actual .xcresult file
+        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
+        if [ -z "$XCRESULT" ]; then
+          echo "ERROR: No .xcresult file found"
+          exit 1
+        fi
+        echo "Using result bundle: $XCRESULT"
+        xcrun xccov view --report --json "$XCRESULT" > coverage.json
+        xcrun xccov view --report "$XCRESULT" > coverage.txt
     
     - name: Check code coverage
       working-directory: vision-pro
       run: |
-        COVERAGE=$(xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult | \
+        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
+        COVERAGE=$(xcrun xccov view --report --json "$XCRESULT" | \
           python3 -c "import sys, json; data=json.load(sys.stdin); print(data['lineCoverage'])")
         echo "Code coverage: ${COVERAGE}%"
         
@@ -119,7 +127,10 @@ jobs:
       working-directory: vision-pro
       run: |
         if [ -d "TestResults" ]; then
-          xcrun xcresulttool get --format json --path TestResults/*.xcresult > test-report.json
+          XCRESULT=$(find TestResults -name "*.xcresult" | head -1)
+          if [ -n "$XCRESULT" ]; then
+            xcrun xcresulttool get --legacy --format json --path "$XCRESULT" > test-report.json
+          fi
         fi
     
     - name: Upload test results

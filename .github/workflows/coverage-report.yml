@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   coverage:
     name: Generate Coverage Badge
@@ -56,7 +59,13 @@ jobs:
       id: coverage
       working-directory: vision-pro
       run: |
-        COVERAGE=$(xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult | \
+        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
+        if [ -z "$XCRESULT" ]; then
+          echo "ERROR: No .xcresult file found"
+          exit 1
+        fi
+        echo "Using result bundle: $XCRESULT"
+        COVERAGE=$(xcrun xccov view --report --json "$XCRESULT" | \
           python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"{data['lineCoverage']:.1f}\")")
         echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
         echo "Code Coverage: ${COVERAGE}%"
@@ -81,9 +90,10 @@ jobs:
     - name: Generate detailed coverage report
       working-directory: vision-pro
       run: |
+        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
         mkdir -p coverage-report
-        xcrun xccov view --report DerivedData/Logs/Test/*.xcresult > coverage-report/coverage.txt
-        xcrun xccov view --report --json DerivedData/Logs/Test/*.xcresult > coverage-report/coverage.json
+        xcrun xccov view --report "$XCRESULT" > coverage-report/coverage.txt
+        xcrun xccov view --report --json "$XCRESULT" > coverage-report/coverage.json
         
         # Generate HTML report (if you have a tool for this)
         echo "# Code Coverage Report" > coverage-report/README.md
@@ -98,26 +108,20 @@ jobs:
         name: coverage-report
         path: vision-pro/coverage-report/
     
-    # Note: Coverage reports are available as workflow artifacts
-    # If you want to commit them to the repo, add 'contents: write' permission:
-    # permissions:
-    #   contents: write
-    # Then uncomment the following steps:
-    
-    # - name: Commit coverage report to repo
-    #   run: |
-    #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
-    #     git config --local user.name "github-actions[bot]"
-    #     
-    #     mkdir -p test-reports
-    #     cp -r vision-pro/coverage-report/* test-reports/
-    #     
-    #     git add test-reports/
-    #     git diff --quiet && git diff --staged --quiet || git commit -m "Update coverage report [skip ci]"
-    #     
-    # - name: Push changes
-    #   uses: ad-m/github-push-action@master
-    #   with:
-    #     github_token: ${{ secrets.GITHUB_TOKEN }}
-    #     branch: ${{ github.ref }}
+    - name: Commit coverage report to repo
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        mkdir -p test-reports
+        cp -r vision-pro/coverage-report/* test-reports/
+        
+        git add test-reports/
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update coverage report [skip ci]"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
 

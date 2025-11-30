@@ -33,6 +33,7 @@ final class CarServiceIntegrationTests: XCTestCase {
         XCTAssertNotNil(container.modelDownloader)
     }
     
+    @MainActor
     func testContainerCreatesHomePageView() {
         // Act
         let view = container.makeHomePageView()
@@ -43,6 +44,7 @@ final class CarServiceIntegrationTests: XCTestCase {
     
     // MARK: - Full Stack Integration Tests
     
+    @MainActor
     func testCarServiceEndToEndWithMocks() async throws {
         // Arrange
         let mockNetworkHandler = MockNetworkHandler()
@@ -65,6 +67,7 @@ final class CarServiceIntegrationTests: XCTestCase {
         XCTAssertTrue(mockLogger.loggedMessages.count > 0)
     }
     
+    @MainActor
     func testHomePageViewModelEndToEnd() async throws {
         // Arrange
         let mockCarService = MockCarService()
@@ -82,11 +85,9 @@ final class CarServiceIntegrationTests: XCTestCase {
         try await viewModel.getCars()
         
         // Assert
-        await MainActor.run {
-            XCTAssertEqual(viewModel.cars.count, 3)
-            XCTAssertFalse(viewModel.isLoading)
-            XCTAssertNil(viewModel.error)
-        }
+        XCTAssertEqual(viewModel.cars.count, 3)
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.error)
         XCTAssertEqual(mockCarService.getCarsCallCount, 1)
         XCTAssertTrue(mockLogger.hasLoggedMessage(containing: "Successfully loaded", level: .info))
     }
@@ -118,6 +119,7 @@ final class CarServiceIntegrationTests: XCTestCase {
     
     // MARK: - Error Handling Integration Tests
     
+    @MainActor
     func testErrorPropagationThroughLayers() async {
         // Arrange
         let mockNetworkHandler = MockNetworkHandler()
@@ -133,16 +135,15 @@ final class CarServiceIntegrationTests: XCTestCase {
             try await viewModel.getCars()
             XCTFail("Expected error to be thrown")
         } catch {
-            await MainActor.run {
-                XCTAssertNotNil(viewModel.error)
-                XCTAssertFalse(viewModel.isLoading)
-            }
+            XCTAssertNotNil(viewModel.error)
+            XCTAssertFalse(viewModel.isLoading)
             XCTAssertTrue(mockLogger.messageCount(for: .error) > 0)
         }
     }
     
     // MARK: - Logging Integration Tests
     
+    @MainActor
     func testLoggingThroughoutStack() async throws {
         // Arrange
         let mockNetworkHandler = MockNetworkHandler()

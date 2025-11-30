@@ -48,8 +48,8 @@ struct AnyCodable: Codable {
     var stringValue: String? { value as? String }
     var intValue: Int? { value as? Int }
     var doubleValue: Double? {
-        if let d = value as? Double { return d }
-        if let i = value as? Int { return Double(i) }
+        if let doubleVal = value as? Double { return doubleVal }
+        if let intVal = value as? Int { return Double(intVal) }
         return nil
     }
 }
@@ -250,6 +250,7 @@ final class UnitTorque: Dimension, @unchecked Sendable {
     static let poundForceFeet = UnitTorque(symbol: "lbf·ft", converter: UnitConverterLinear(coefficient: 1.3558179483314004))
 
     override class func baseUnit() -> Self {
+        // swiftlint:disable:next force_cast
         return newtonMeters as! Self
     }
 }

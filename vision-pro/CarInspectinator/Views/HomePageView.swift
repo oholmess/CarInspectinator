@@ -123,6 +123,6 @@ extension HopePageView {
 }
 
 #Preview {
-    HopePageView(vm: HomePageViewModel(carService: CarService(networkHandler: NetworkHandler(), logger: LoggerProtocol.Type.self as! LoggerProtocol)))
+    HopePageView(vm: HomePageViewModel(carService: CarService(networkHandler: NetworkHandler(), logger: LoggingService.shared)))
         .environment(AppModel())
 }

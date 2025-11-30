@@ -8,7 +8,7 @@ on:
 jobs:
   coverage:
     name: Generate Coverage Badge
-    runs-on: macos-14
+    runs-on: macos-15
     
     steps:
     - name: Checkout code
@@ -17,7 +17,7 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '16.0'
+        xcode-version: '16.2'
     
     - name: Run tests with coverage
       working-directory: vision-pro

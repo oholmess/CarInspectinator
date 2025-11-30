@@ -46,7 +46,7 @@ jobs:
         xcodebuild build-for-testing \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }}' \
+          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=latest' \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           | xcpretty && exit ${PIPESTATUS[0]}
@@ -57,7 +57,7 @@ jobs:
         xcodebuild test-without-building \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }}' \
+          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=latest' \
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults \
@@ -165,6 +165,6 @@ jobs:
         xcodebuild build \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }}' \
+          -destination 'platform=visionOS Simulator,name=${{ env.VISIONOS_SIMULATOR }},OS=latest' \
           | xcpretty && exit ${PIPESTATUS[0]}
 

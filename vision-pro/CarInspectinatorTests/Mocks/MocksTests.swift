@@ -92,7 +92,12 @@ final class MockNetworkHandlerTests: XCTestCase {
             _ = try await sut.request(url)
             XCTFail("Expected error")
         } catch {
-            XCTAssertEqual(error as? NetworkError, .noResponse)
+            // Check if it's a NetworkError.noResponse
+            if case NetworkError.noResponse = error {
+                // Success - correct error type
+            } else {
+                XCTFail("Expected NetworkError.noResponse but got \(error)")
+            }
         }
     }
 }
@@ -378,10 +383,10 @@ final class MockModelDownloaderTests: XCTestCase {
     
     func testDownloadModel_IncrementsCallCount() async throws {
         // Given
-        let url = URL(string: "https://example.com/model.usdz")!
+        let urlString = "https://example.com/model.usdz"
         
         // When
-        _ = try await sut.downloadModel(from: url, volumeId: "test")
+        _ = try await sut.downloadModel(from: urlString, volumeId: "test")
         
         // Then
         XCTAssertEqual(sut.downloadCallCount, 1)
@@ -391,30 +396,30 @@ final class MockModelDownloaderTests: XCTestCase {
         // Given
         sut.shouldThrowError = true
         sut.errorToThrow = NetworkError.noResponse
-        let url = URL(string: "https://example.com/model.usdz")!
+        let urlString = "https://example.com/model.usdz"
         
         // When/Then
         do {
-            _ = try await sut.downloadModel(from: url, volumeId: "test")
+            _ = try await sut.downloadModel(from: urlString, volumeId: "test")
             XCTFail("Expected error")
         } catch {
             XCTAssertNotNil(error)
         }
     }
     
-    func testClearCache_DoesNotThrow() {
+    func testClearCache_DoesNotThrow() throws {
         // When/Then - Should not throw
-        sut.clearCache(for: "test")
+        try sut.clearCache(for: "test")
     }
     
-    func testClearAllCache_DoesNotThrow() {
+    func testClearAllCache_DoesNotThrow() throws {
         // When/Then - Should not throw
-        sut.clearAllCache()
+        try sut.clearAllCache()
     }
     
-    func testGetCacheSize_ReturnsZeroByDefault() async {
+    func testGetCacheSize_ReturnsZeroByDefault() {
         // When
-        let size = await sut.getCacheSize()
+        let size = sut.getCacheSize()
         
         // Then
         XCTAssertEqual(size, 0)

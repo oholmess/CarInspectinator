@@ -12,6 +12,7 @@ jobs:
   coverage:
     name: Generate Coverage Badge
     runs-on: macos-15-xlarge
+    timeout-minutes: 15
     
     steps:
     - name: Checkout code
@@ -22,50 +23,73 @@ jobs:
       with:
         xcode-version: '26.1'
     
-    - name: List available simulators
-      run: xcrun simctl list devices available
-    
-    - name: Check visionOS simulators
+    - name: Find and boot visionOS simulator
+      id: simulator
       run: |
-        echo "Available visionOS simulators:"
-        xcrun simctl list devices available | grep -i vision || echo "No visionOS simulators found"
-        echo ""
-        echo "First available visionOS 26.1 simulator:"
-        xcrun simctl list devices available | grep "Apple Vision Pro.*26.1" | head -1 || echo "None found"
-    
-    - name: Run tests with coverage
-      working-directory: vision-pro
-      run: |
-        # Use the visionOS 26.1 simulator ID directly from available destinations
-        # Format: Apple Vision Pro (UUID) (Status)
+        # Find visionOS 26.x simulator
         SIMULATOR_ID=$(xcrun simctl list devices available | grep -E "visionOS 26" -A1 | grep "Apple Vision Pro" | head -1 | sed -E 's/.*\(([A-Fa-f0-9-]{36})\).*/\1/')
         
         if [ -z "$SIMULATOR_ID" ]; then
           echo "ERROR: Could not find visionOS 26.x simulator"
-          echo "Available simulators:"
           xcrun simctl list devices available
           exit 1
         fi
         
-        echo "Using simulator ID: $SIMULATOR_ID"
+        echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
+        echo "Found simulator ID: $SIMULATOR_ID"
+        
+        # Boot simulator and wait for it to be ready
+        echo "Booting simulator..."
+        xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true
+        
+        # Wait for simulator to be fully booted (max 60 seconds)
+        echo "Waiting for simulator to boot..."
+        for i in {1..60}; do
+          STATUS=$(xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -o "(Booted)" || true)
+          if [ "$STATUS" = "(Booted)" ]; then
+            echo "Simulator booted successfully after ${i}s"
+            break
+          fi
+          sleep 1
+        done
+        
+        # Verify it's booted
+        xcrun simctl list devices | grep "$SIMULATOR_ID"
+    
+    - name: Cache derived data
+      uses: actions/cache@v4
+      with:
+        path: vision-pro/DerivedData
+        key: ${{ runner.os }}-coverage-derived-data-${{ hashFiles('vision-pro/**/*.swift', 'vision-pro/**/*.xcodeproj/**') }}
+        restore-keys: |
+          ${{ runner.os }}-coverage-derived-data-
+    
+    - name: Run tests with coverage
+      working-directory: vision-pro
+      env:
+        # Skip preview provider compilation in CI
+        ENABLE_PREVIEWS: NO
+      run: |
         xcodebuild test \
           -project CarInspectinator.xcodeproj \
           -scheme CarInspectinator \
-          -destination "platform=visionOS Simulator,id=$SIMULATOR_ID" \
+          -destination "platform=visionOS Simulator,id=${{ steps.simulator.outputs.simulator_id }}" \
           -enableCodeCoverage YES \
-          -derivedDataPath DerivedData
+          -derivedDataPath DerivedData \
+          -resultBundlePath TestResults.xcresult \
+          -parallel-testing-enabled YES \
+          -maximum-concurrent-test-simulator-destinations 1 \
+          ENABLE_PREVIEWS=NO
     
     - name: Extract coverage percentage
       id: coverage
       working-directory: vision-pro
       run: |
-        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
-        if [ -z "$XCRESULT" ]; then
-          echo "ERROR: No .xcresult file found"
+        if [ ! -d "TestResults.xcresult" ]; then
+          echo "ERROR: TestResults.xcresult not found"
           exit 1
         fi
-        echo "Using result bundle: $XCRESULT"
-        COVERAGE=$(xcrun xccov view --report --json "$XCRESULT" | \
+        COVERAGE=$(xcrun xccov view --report --json TestResults.xcresult | \
           python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"{data['lineCoverage']:.1f}\")")
         echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
         echo "Code Coverage: ${COVERAGE}%"
@@ -90,12 +114,10 @@ jobs:
     - name: Generate detailed coverage report
       working-directory: vision-pro
       run: |
-        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
         mkdir -p coverage-report
-        xcrun xccov view --report "$XCRESULT" > coverage-report/coverage.txt
-        xcrun xccov view --report --json "$XCRESULT" > coverage-report/coverage.json
+        xcrun xccov view --report TestResults.xcresult > coverage-report/coverage.txt
+        xcrun xccov view --report --json TestResults.xcresult > coverage-report/coverage.json
         
-        # Generate HTML report (if you have a tool for this)
         echo "# Code Coverage Report" > coverage-report/README.md
         echo "" >> coverage-report/README.md
         echo "Generated: $(date)" >> coverage-report/README.md
@@ -124,4 +146,3 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: ${{ github.ref }}
-

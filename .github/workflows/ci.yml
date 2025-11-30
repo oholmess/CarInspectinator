@@ -86,10 +86,12 @@ jobs:
     - name: Generate code coverage report
       working-directory: vision-pro
       run: |
-        # Find the actual .xcresult file
-        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
+        # Find the actual .xcresult file (results are in TestResults due to -resultBundlePath)
+        XCRESULT=$(find TestResults -name "*.xcresult" | head -1)
         if [ -z "$XCRESULT" ]; then
-          echo "ERROR: No .xcresult file found"
+          echo "ERROR: No .xcresult file found in TestResults"
+          echo "Contents of TestResults:"
+          ls -la TestResults/ || echo "TestResults directory does not exist"
           exit 1
         fi
         echo "Using result bundle: $XCRESULT"
@@ -99,7 +101,7 @@ jobs:
     - name: Check code coverage
       working-directory: vision-pro
       run: |
-        XCRESULT=$(find DerivedData/Logs/Test -name "*.xcresult" | head -1)
+        XCRESULT=$(find TestResults -name "*.xcresult" | head -1)
         COVERAGE=$(xcrun xccov view --report --json "$XCRESULT" | \
           python3 -c "import sys, json; data=json.load(sys.stdin); print(data['lineCoverage'])")
         echo "Code coverage: ${COVERAGE}%"

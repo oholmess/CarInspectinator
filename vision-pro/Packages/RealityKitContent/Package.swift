@@ -6,10 +6,10 @@ import PackageDescription
 let package = Package(
     name: "RealityKitContent",
     platforms: [
-        .visionOS(.v6),
-        .macOS(.v26),
-        .iOS(.v26),
-        .tvOS(.v26)
+        .visionOS("3.0"),
+        .macOS("26.0"),
+        .iOS("26.0"),
+        .tvOS("26.0")
     ],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.

@@ -8,6 +8,7 @@
 import XCTest
 @testable import CarInspectinator
 
+@MainActor
 final class AppModelTests: XCTestCase {
     
     var sut: AppModel!

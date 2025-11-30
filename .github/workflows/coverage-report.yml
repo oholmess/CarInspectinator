@@ -98,20 +98,26 @@ jobs:
         name: coverage-report
         path: vision-pro/coverage-report/
     
-    - name: Commit coverage report to repo
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        
-        mkdir -p test-reports
-        cp -r vision-pro/coverage-report/* test-reports/
-        
-        git add test-reports/
-        git diff --quiet && git diff --staged --quiet || git commit -m "Update coverage report [skip ci]"
-        
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.ref }}
+    # Note: Coverage reports are available as workflow artifacts
+    # If you want to commit them to the repo, add 'contents: write' permission:
+    # permissions:
+    #   contents: write
+    # Then uncomment the following steps:
+    
+    # - name: Commit coverage report to repo
+    #   run: |
+    #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+    #     git config --local user.name "github-actions[bot]"
+    #     
+    #     mkdir -p test-reports
+    #     cp -r vision-pro/coverage-report/* test-reports/
+    #     
+    #     git add test-reports/
+    #     git diff --quiet && git diff --staged --quiet || git commit -m "Update coverage report [skip ci]"
+    #     
+    # - name: Push changes
+    #   uses: ad-m/github-push-action@master
+    #   with:
+    #     github_token: ${{ secrets.GITHUB_TOKEN }}
+    #     branch: ${{ github.ref }}
 

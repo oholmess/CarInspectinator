@@ -86,9 +86,9 @@ final class ModelDownloaderTests: XCTestCase {
     
     // MARK: - getCacheSize Tests
     
-    func testGetCacheSize_ReturnsValue() async {
+    func testGetCacheSize_ReturnsValue() {
         // When
-        let size = await sut.getCacheSize()
+        let size = sut.getCacheSize()
         
         // Then
         // Size should be >= 0 (non-negative)
@@ -97,16 +97,16 @@ final class ModelDownloaderTests: XCTestCase {
     
     // MARK: - clearCache Tests
     
-    func testClearCache_DoesNotThrow() {
+    func testClearCache_DoesNotThrow() throws {
         // Given
         let volumeId = "test-volume"
         
         // When/Then - Should not throw
-        sut.clearCache(for: volumeId)
+        try sut.clearCache(for: volumeId)
     }
     
-    func testClearAllCache_DoesNotThrow() {
+    func testClearAllCache_DoesNotThrow() throws {
         // When/Then - Should not throw
-        sut.clearAllCache()
+        try sut.clearAllCache()
     }
 }

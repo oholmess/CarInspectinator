@@ -16,8 +16,8 @@ final class ModelDownloaderTests: XCTestCase {
     var mockConfiguration: MockConfigurationService!
     var mockLogger: MockLogger!
     
-    override func setUp() {
-        super.setUp()
+    override func setUp() throws {
+        try super.setUp()
         throw XCTSkip("ModelDownloader tests temporarily disabled - need mock URLSession")
         
         mockConfiguration = MockConfigurationService()

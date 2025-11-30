@@ -86,23 +86,19 @@ jobs:
     - name: Generate code coverage report
       working-directory: vision-pro
       run: |
-        # Find the actual .xcresult file (results are in TestResults due to -resultBundlePath)
-        XCRESULT=$(find TestResults -name "*.xcresult" | head -1)
-        if [ -z "$XCRESULT" ]; then
-          echo "ERROR: No .xcresult file found in TestResults"
-          echo "Contents of TestResults:"
-          ls -la TestResults/ || echo "TestResults directory does not exist"
+        # TestResults is the .xcresult bundle itself (directory bundle)
+        if [ ! -d "TestResults" ]; then
+          echo "ERROR: TestResults directory does not exist"
           exit 1
         fi
-        echo "Using result bundle: $XCRESULT"
-        xcrun xccov view --report --json "$XCRESULT" > coverage.json
-        xcrun xccov view --report "$XCRESULT" > coverage.txt
+        echo "Using result bundle: TestResults"
+        xcrun xccov view --report --json TestResults > coverage.json
+        xcrun xccov view --report TestResults > coverage.txt
     
     - name: Check code coverage
       working-directory: vision-pro
       run: |
-        XCRESULT=$(find TestResults -name "*.xcresult" | head -1)
-        COVERAGE=$(xcrun xccov view --report --json "$XCRESULT" | \
+        COVERAGE=$(xcrun xccov view --report --json TestResults | \
           python3 -c "import sys, json; data=json.load(sys.stdin); print(data['lineCoverage'])")
         echo "Code coverage: ${COVERAGE}%"
         
@@ -129,10 +125,7 @@ jobs:
       working-directory: vision-pro
       run: |
         if [ -d "TestResults" ]; then
-          XCRESULT=$(find TestResults -name "*.xcresult" | head -1)
-          if [ -n "$XCRESULT" ]; then
-            xcrun xcresulttool get --legacy --format json --path "$XCRESULT" > test-report.json
-          fi
+          xcrun xcresulttool get --legacy --format json --path TestResults > test-report.json
         fi
     
     - name: Upload test results

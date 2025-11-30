@@ -100,8 +100,9 @@ jobs:
     - name: Check code coverage
       working-directory: vision-pro
       run: |
+        # lineCoverage is a decimal (0.0-1.0), multiply by 100 for percentage
         COVERAGE=$(xcrun xccov view --report --json TestResults.xcresult | \
-          python3 -c "import sys, json; data=json.load(sys.stdin); print(data['lineCoverage'])")
+          python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"{data['lineCoverage'] * 100:.2f}\")")
         echo "Code coverage: ${COVERAGE}%"
         
         COVERAGE_INT=$(echo $COVERAGE | cut -d'.' -f1)

@@ -88,8 +88,9 @@ jobs:
           echo "ERROR: TestResults.xcresult not found"
           exit 1
         fi
+        # lineCoverage is a decimal (0.0-1.0), multiply by 100 for percentage
         COVERAGE=$(xcrun xccov view --report --json TestResults.xcresult | \
-          python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"{data['lineCoverage']:.1f}\")")
+          python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"{data['lineCoverage'] * 100:.1f}\")")
         echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
         echo "Code Coverage: ${COVERAGE}%"
     

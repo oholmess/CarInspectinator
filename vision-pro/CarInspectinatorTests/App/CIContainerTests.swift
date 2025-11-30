@@ -8,6 +8,7 @@
 import XCTest
 @testable import CarInspectinator
 
+@MainActor
 final class CIContainerTests: XCTestCase {
     
     var sut: CIContainer!
@@ -64,10 +65,22 @@ final class CIContainerTests: XCTestCase {
     // MARK: - Default Value Tests
     
     func testDefaultValue_ReturnsContainer() {
-        // When
-        let defaultContainer = CIContainer.defaultValue
+        // When - create a new container using static property
+        let defaultContainer = CIContainer()
         
         // Then
         XCTAssertNotNil(defaultContainer)
+    }
+    
+    // MARK: - Static Default Value Tests
+    
+    func testStaticDefaultValue_ReturnsNewContainer() {
+        // When
+        let container1 = CIContainer.defaultValue
+        let container2 = CIContainer.defaultValue
+        
+        // Then - each call creates a new container
+        XCTAssertNotNil(container1)
+        XCTAssertNotNil(container2)
     }
 }

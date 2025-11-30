@@ -16,7 +16,7 @@ final class NetworkHandlerTests: XCTestCase {
     override func setUp() {
         super.setUp()
         mockLogger = MockLogger()
-        // Create network handler with mock logger
+        // Create network handler with mock logger to avoid Bundle.main issues
         sut = NetworkHandler(logger: mockLogger)
     }
     
@@ -29,8 +29,8 @@ final class NetworkHandlerTests: XCTestCase {
     // MARK: - Initialization Tests
     
     func testInit_CreatesNetworkHandler() {
-        // Given/When
-        let handler = NetworkHandler()
+        // Given/When - use mock logger to avoid Bundle.main issues
+        let handler = NetworkHandler(logger: MockLogger())
         
         // Then
         XCTAssertNotNil(handler)

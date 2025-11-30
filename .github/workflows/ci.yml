@@ -83,8 +83,7 @@ jobs:
           -derivedDataPath DerivedData \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults.xcresult \
-          -parallel-testing-enabled YES \
-          -maximum-concurrent-test-simulator-destinations 1 \
+          -parallel-testing-enabled NO \
           ENABLE_PREVIEWS=NO \
           | xcpretty && exit ${PIPESTATUS[0]}
     

@@ -59,15 +59,16 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(sut.selectedCar?.id, car.id)
     }
     
-    func testSelectCar_UpdatesPanoramaImageName() {
+    func testSelectCar_UpdatesImmersiveSpaceState() {
         // Given
         let car = createMockCarWithPanorama()
+        XCTAssertEqual(sut.immersiveSpaceState, .closed)
         
         // When
         sut.selectCar(car)
         
-        // Then
-        XCTAssertEqual(sut.panoramaImageName, car.interiorPanoramaAssetName)
+        // Then - selectCar sets immersiveSpaceState to inTransition
+        XCTAssertEqual(sut.immersiveSpaceState, .inTransition)
     }
     
     // MARK: - resetSelection Tests

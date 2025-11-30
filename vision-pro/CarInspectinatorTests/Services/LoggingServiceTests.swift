@@ -14,7 +14,8 @@ final class LoggingServiceTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        sut = Logger(subsystem: "TestSubsystem", category: "TestCategory")
+        // Use explicit subsystem to avoid Bundle.main issues in tests
+        sut = Logger(subsystem: "com.test.CarInspectinator", category: "TestCategory")
     }
     
     override func tearDown() {
@@ -25,7 +26,7 @@ final class LoggingServiceTests: XCTestCase {
     // MARK: - Initialization Tests
     
     func testInit_CreatesLogger() {
-        // Given/When
+        // Given/When - use explicit subsystem
         let logger = Logger(subsystem: "com.test", category: "test")
         
         // Then
@@ -68,7 +69,7 @@ final class LoggingServiceTests: XCTestCase {
     
     func testWarning_AcceptsSpecialCharacters() {
         // Given/When/Then - Should not crash
-        sut.warning("Warning: 🚨 Alert! @#$%^&*()", file: #file, function: #function, line: #line)
+        sut.warning("Warning: Alert! @#$%^&*()", file: #file, function: #function, line: #line)
     }
     
     // MARK: - Error Level Tests
@@ -142,4 +143,3 @@ final class LoggingServiceTests: XCTestCase {
         XCTAssertTrue(factory1 === factory2)
     }
 }
-

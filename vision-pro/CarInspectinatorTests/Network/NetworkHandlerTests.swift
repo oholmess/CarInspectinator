@@ -126,7 +126,7 @@ final class NetworkHandlerTests: XCTestCase {
         
         // Act & Assert
         do {
-            _: TestResponse = try await sut.request(
+            let _: TestResponse = try await sut.request(
                 testURL,
                 responseType: TestResponse.self
             )

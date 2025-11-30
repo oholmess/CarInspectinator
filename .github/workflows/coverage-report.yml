@@ -8,7 +8,7 @@ on:
 jobs:
   coverage:
     name: Generate Coverage Badge
-    runs-on: macos-15
+    runs-on: macos-15-xlarge
     
     steps:
     - name: Checkout code
@@ -18,6 +18,19 @@ jobs:
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: '26.1'
+    
+    - name: List available simulators
+      run: xcrun simctl list devices available
+    
+    - name: Create visionOS simulator if needed
+      run: |
+        # Check if Apple Vision Pro simulator with visionOS 26.1 exists
+        if ! xcrun simctl list devices | grep -q "Apple Vision Pro.*26.1"; then
+          echo "Creating Apple Vision Pro simulator..."
+          xcrun simctl create "Apple Vision Pro" "Apple Vision Pro" "com.apple.CoreSimulator.SimRuntime.xrOS-26-1" || true
+        fi
+        # List devices again to confirm
+        xcrun simctl list devices available | grep -i vision || true
     
     - name: Run tests with coverage
       working-directory: vision-pro

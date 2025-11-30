@@ -15,7 +15,7 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: macos-15
+    runs-on: macos-15-xlarge
     
     steps:
     - name: Checkout code
@@ -31,6 +31,16 @@ jobs:
     
     - name: List available simulators
       run: xcrun simctl list devices available
+    
+    - name: Create visionOS simulator if needed
+      run: |
+        # Check if Apple Vision Pro simulator with visionOS 26.1 exists
+        if ! xcrun simctl list devices | grep -q "Apple Vision Pro.*26.1"; then
+          echo "Creating Apple Vision Pro simulator..."
+          xcrun simctl create "Apple Vision Pro" "Apple Vision Pro" "com.apple.CoreSimulator.SimRuntime.xrOS-26-1" || true
+        fi
+        # List devices again to confirm
+        xcrun simctl list devices available | grep -i vision || true
     
     - name: Cache derived data
       uses: actions/cache@v4
@@ -132,7 +142,7 @@ jobs:
 
   lint:
     name: Swift Lint
-    runs-on: macos-15
+    runs-on: macos-15-xlarge
     
     steps:
     - name: Checkout code
@@ -148,7 +158,7 @@ jobs:
 
   build-check:
     name: Build Check
-    runs-on: macos-15
+    runs-on: macos-15-xlarge
     
     steps:
     - name: Checkout code
